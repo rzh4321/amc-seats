@@ -13,6 +13,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   
   async function checkSeat(seatNumber) {
     console.log('Starting seat check for:', seatNumber);
+    const movieInfo = document.querySelector('.headline + ul');
+    date = new Date(movieInfo.children[1].textContent);
     
     let seatButtons = Array.from(document.getElementsByTagName('button')).filter(button => {
       const buttonText = button.textContent.trim();
@@ -47,5 +49,5 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     const isOccupied = seatButton.classList.contains('cursor-not-allowed');
     console.log('Seat occupied status:', isOccupied);
   
-    return { isOccupied };
+    return { isOccupied, date };
   }
