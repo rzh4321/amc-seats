@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         console.log(showDate)
         try {
-            const response = await fetch('http://127.0.0.1:8000/notifications', {
+            const response = await fetch('https://amc-seats-backend-production.up.railway.app/notifications', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup  # type: ignore
 import time
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
-from db import Movie, TheaterMovieDate, Format, MovieFormat, SessionLocal
+from scraper.db2 import Movie, TheaterMovieDate, Format, MovieFormat, SessionLocal
 
 
 session = SessionLocal()
