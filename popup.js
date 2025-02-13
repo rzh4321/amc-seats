@@ -97,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
           messageDiv.textContent = "Please enter a valid email address.";
           return;
         }
-        console.log(showDate)
         try {
             const response = await fetch('https://amc-seats-backend-production.up.railway.app/notifications', {
               method: 'POST',
