@@ -45,6 +45,14 @@ def create_driver():
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--disable-extensions')
     chrome_options.add_argument('--disable-infobars')
+    chrome_options.add_argument('--disable-software-rasterizer')
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+
+    # Add logging for debugging
+    chrome_options.add_argument('--enable-logging')
+    chrome_options.add_argument('--v=1')
 
 
     
