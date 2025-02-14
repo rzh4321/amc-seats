@@ -1,33 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <style>
-    body {
-      width: 300px;
-      padding: 16px;
-      font-family: Arial, sans-serif;
-    }
-    input, button {
-      margin: 8px 0;
-      padding: 8px;
-      width: 100%;
-    }
-    #message {
-      margin-top: 8px;
-      color: #666;
-    }
-  </style>
-</head>
-<body>
-  <div id="content">
-    <div id="message"></div>
-    <input type="text" id="seatNumber" placeholder="Enter seat number (e.g., D5)" />
-    <button id="checkSeat">Check Seat</button>
-    <div id="emailSection" style="display: none;">
-      <input type="email" id="emailInput" placeholder="Enter your email" />
-      <button id="submitEmail">Submit</button>
+  <head>
+    <style>
+      body {
+        width: 300px;
+        padding: 16px;
+        font-family: Arial, sans-serif;
+      }
+      input,
+      button {
+        margin: 8px 0;
+        padding: 8px;
+        width: 100%;
+      }
+      #message {
+        margin-top: 8px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="message"></div>
+      <input
+        type="text"
+        id="seatNumber"
+        placeholder="Enter seat number (e.g., D5)"
+      />
+      <button id="checkSeat">Check Seat</button>
+      <div id="emailSection" style="display: none">
+        <input type="email" id="emailInput" placeholder="Enter your email" />
+        <button id="submitEmail">Submit</button>
+      </div>
     </div>
-  </div>
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

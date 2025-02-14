@@ -1,22 +1,19 @@
 {
-    "manifest_version": 3,
-    "name": "AMC Seat Checker",
-    "version": "1.0",
-    "description": "Check seat availability at AMC theatres",
-    "permissions": [
-      "activeTab",
-      "storage"
-    ],
-    "action": {
-      "default_popup": "popup.html"
-    },
-    "content_scripts": [
-      {
-        "matches": ["https://www.amctheatres.com/showtimes/*"],
-        "js": ["content.js"]
-      }
-    ],
-    "background": {
-      "service_worker": "background.js"
+  "manifest_version": 3,
+  "name": "AMC Seat Checker",
+  "version": "1.0",
+  "description": "Check seat availability at AMC theatres",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.amctheatres.com/showtimes/*"],
+      "js": ["content.js"]
     }
+  ],
+  "background": {
+    "service_worker": "background.js"
   }
+}
