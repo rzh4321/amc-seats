@@ -3,35 +3,170 @@
   <head>
     <style>
       body {
-        width: 300px;
+        width: 350px;
+        padding: 20px;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background-color: #f8f9fa;
+      }
+
+      .container {
+        background-color: white;
+        border-radius: 12px;
         padding: 16px;
-        font-family: Arial, sans-serif;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
-      input,
-      button {
-        margin: 8px 0;
-        padding: 8px;
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 8px;
+      }
+
+      .tab {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        background: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #6c757d;
+        transition: all 0.2s;
+      }
+
+      .tab.active {
+        background-color: #e7f3ff;
+        color: #0d6efd;
+        font-weight: 500;
+      }
+
+      .tab:hover:not(.active) {
+        background-color: #f1f3f5;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      input {
         width: 100%;
+        padding: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin: 8px 0;
+        font-size: 14px;
+        box-sizing: border-box;
       }
+
+      input:focus {
+        outline: none;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        background-color: #0d6efd;
+        color: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      button:hover {
+        background-color: #0b5ed7;
+      }
+
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+
       #message {
-        margin-top: 8px;
-        color: #666;
+        margin-top: 12px;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+
+      .info {
+        background-color: #e7f3ff;
+        color: #004085;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 10px 0;
+      }
+
+      .loading::after {
+        content: "⚡";
+        animation: loading 1s infinite;
+      }
+
+      @keyframes loading {
+        0% {
+          opacity: 0.2;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
       }
     </style>
   </head>
   <body>
-    <div id="content">
-      <div id="message"></div>
-      <input
-        type="text"
-        id="seatNumber"
-        placeholder="Enter seat number (e.g., D5)"
-      />
-      <button id="checkSeat">Check Seat</button>
+    <div class="container">
+      <div class="tabs">
+        <button class="tab active" data-tab="specific">Specific Seats</button>
+        <button class="tab" data-tab="any">Any Available</button>
+      </div>
+
+      <div id="specificSeats" class="tab-content active">
+        <input
+          type="text"
+          id="seatNumber"
+          placeholder="Enter seat numbers (e.g., D5, E6, F7)"
+        />
+        <button id="checkSeat">Check Seats</button>
+      </div>
+
+      <div id="anySeats" class="tab-content">
+        <p style="font-size: 14px; color: #6c757d; margin-bottom: 12px">
+          Get notified when any currently occupied seat becomes available.
+        </p>
+        <button id="checkAllSeats">Check All Seats</button>
+      </div>
+
       <div id="emailSection" style="display: none">
         <input type="email" id="emailInput" placeholder="Enter your email" />
-        <button id="submitEmail">Submit</button>
+        <button id="submitEmail">Notify Me</button>
       </div>
+
+      <div class="loading" id="loading">Processing...</div>
+      <div id="message"></div>
     </div>
     <script src="popup.js"></script>
   </body>

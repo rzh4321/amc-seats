@@ -6,10 +6,52 @@ document.addEventListener("DOMContentLoaded", function () {
   const emailSection = document.getElementById("emailSection");
   let seatingUrl;
   let showDate;
-  let seatNumbers;
+  let seatNumbers = [];
   let theater;
   let movie;
   let showtime;
+  const tabs = document.querySelectorAll(".tab");
+  const tabContents = document.querySelectorAll(".tab-content");
+  const checkAllSeatsButton = document.getElementById("checkAllSeats");
+  const loadingDiv = document.getElementById("loading");
+  let isCheckingAllSeats = false;
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((t) => t.classList.remove("active"));
+      tabContents.forEach((c) => c.classList.remove("active"));
+
+      tab.classList.add("active");
+      document
+        .getElementById(
+          tab.dataset.tab === "specific" ? "specificSeats" : "anySeats",
+        )
+        .classList.add("active");
+
+      emailSection.style.display = "none";
+      messageDiv.textContent = "";
+      messageDiv.className = "";
+    });
+  });
+
+  function showLoading() {
+    loadingDiv.style.display = "block";
+    checkSeatButton.disabled = true;
+    submitEmailButton.disabled = true;
+    checkAllSeatsButton.disabled = true;
+  }
+
+  function hideLoading() {
+    loadingDiv.style.display = "none";
+    checkSeatButton.disabled = false;
+    submitEmailButton.disabled = false;
+    checkAllSeatsButton.disabled = false;
+  }
+
+  function showMessage(text, type = "info") {
+    messageDiv.textContent = text;
+    messageDiv.className = type;
+  }
 
   function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -67,12 +109,14 @@ document.addEventListener("DOMContentLoaded", function () {
           /https:\/\/www\.amctheatres\.com\/showtimes\/.*\/seats/,
         )
       ) {
-        messageDiv.textContent =
-          "Please navigate to the AMC seating selection screen.";
+        showMessage(
+          "Please navigate to the AMC seating selection screen.",
+          "error",
+        );
         return;
       }
       seatingUrl = currentUrl;
-
+      showLoading();
       console.log("Sending message to content script...");
       chrome.tabs.sendMessage(
         tabs[0].id,
@@ -81,17 +125,17 @@ document.addEventListener("DOMContentLoaded", function () {
           seatNumbers: formattedSeatNumbers,
         },
         function (response) {
+          hideLoading();
           console.log("Received response:", response);
 
           if (chrome.runtime.lastError) {
             console.log("Runtime error:", chrome.runtime.lastError);
-            messageDiv.textContent =
-              "Error: Could not communicate with the page.";
+            showMessage("Error: Could not communicate with the page.", "error");
             return;
           }
 
           if (response.error) {
-            messageDiv.textContent = response.error;
+            showMessage(response.error, "error");
           } else {
             const {
               occupiedSeats,
@@ -108,10 +152,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (formattedSeatNumbers.length === 1) {
               // Single seat check
               if (occupiedSeats.length === 1) {
-                messageDiv.textContent = "This seat is currently occupied.";
+                showMessage("This seat is currently occupied.", "info");
                 emailSection.style.display = "block";
               } else {
-                messageDiv.textContent = "This seat is available!";
+                showMessage("This seat is currently available!", "success");
                 emailSection.style.display = "none";
               }
             } else {
@@ -131,17 +175,82 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  checkAllSeatsButton.addEventListener("click", function () {
+    isCheckingAllSeats = true;
+    showLoading();
+
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const currentUrl = tabs[0].url;
+
+      if (
+        !currentUrl.match(
+          /https:\/\/www\.amctheatres\.com\/showtimes\/.*\/seats/,
+        )
+      ) {
+        showMessage(
+          "Please navigate to the AMC seating selection screen.",
+          "error",
+        );
+        hideLoading();
+        return;
+      }
+
+      seatingUrl = currentUrl;
+
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { action: "getAllOccupiedSeats" },
+        function (response) {
+          hideLoading();
+
+          if (chrome.runtime.lastError) {
+            showMessage("Error: Could not communicate with the page.", "error");
+            return;
+          }
+
+          if (response.error) {
+            showMessage(response.error, "error");
+            return;
+          }
+
+          const { occupiedSeats, theaterName, movieShowtime, movieName, date } =
+            response;
+
+          if (occupiedSeats.length === 0) {
+            showMessage("All seats are currently available!", "success");
+            return;
+          }
+
+          showDate = date;
+          theater = theaterName;
+          showtime = movieShowtime;
+          movie = movieName;
+          seatNumbers = occupiedSeats;
+
+          showMessage(
+            `Found ${occupiedSeats.length} occupied seats. Enter your email to get notified when any become available.`,
+            "info",
+          );
+          emailSection.style.display = "block";
+        },
+      );
+    });
+  });
+
   submitEmailButton.addEventListener("click", async function () {
     const email = document.getElementById("emailInput").value.trim();
+    const activeTab = document.querySelector(".tab.active").dataset.tab;
+    const isAnySeatsMode = activeTab === "any";
 
     if (!isValidEmail(email)) {
-      messageDiv.textContent = "Please enter a valid email address.";
+      showMessage("Please enter a valid email address.", "error");
       return;
     }
 
-    try {
-      // const response = await fetch('https://amc-seats-backend-production.up.railway.app/notifications', {
+    showLoading();
+    submitEmailButton.style;
 
+    try {
       const response = await fetch("http://localhost:8000/notifications", {
         method: "POST",
         headers: {
@@ -155,36 +264,53 @@ document.addEventListener("DOMContentLoaded", function () {
           movie,
           showtime,
           showDate: showDate.split("T")[0],
-          // are_specifically_requested: false
+          areSpecficallyRequested: !isAnySeatsMode,
         }),
       });
 
+      hideLoading();
       const data = await response.json();
+
       if (data.error) {
-        messageDiv.textContent = data.error;
+        showMessage(data.error, "error");
         return;
       }
 
       if (data.exists) {
-        messageDiv.textContent =
-          "You're already subscribed to notifications for all these seats.";
+        showMessage(
+          isAnySeatsMode
+            ? "You're already subscribed to notifications for this showing."
+            : "You're already subscribed to notifications for all these seats.",
+          "info",
+        );
       } else if (data.detail) {
-        messageDiv.textContent = "An unknown error occurred.";
+        showMessage("An unknown error occurred.", "error");
       } else {
-        if (seatNumbers.length === 1) {
-          messageDiv.textContent = `We'll notify ${email} when seat ${seatNumbers[0]} becomes available.`;
+        let successMessage;
+
+        if (isAnySeatsMode) {
+          successMessage = `We'll notify ${email} when any seat becomes available for this showing.`;
         } else {
-          if (data.created === seatNumbers.length) {
-            messageDiv.textContent = `We'll notify ${email} when any of these seats become available: ${seatNumbers.join(", ")}.`;
+          if (seatNumbers.length === 1) {
+            successMessage = `We'll notify ${email} when seat ${seatNumbers[0]} becomes available.`;
           } else {
-            messageDiv.textContent = `Subscribed to notifications for ${data.created} new seats. Some seats were already subscribed.`;
+            if (data.created === seatNumbers.length) {
+              successMessage = `We'll notify ${email} when any of these seats become available: ${seatNumbers.join(", ")}.`;
+            } else {
+              successMessage = `Subscribed to notifications for ${data.created} new seats. Some seats were already subscribed.`;
+            }
           }
         }
+
+        showMessage(successMessage, "success");
         emailSection.style.display = "none";
       }
     } catch (error) {
-      messageDiv.textContent = "An error occurred. Please try again later.";
+      hideLoading();
+      showMessage("An error occurred. Please try again later.", "error");
       console.error("Error:", error);
     }
   });
 });
+
+// const response = await fetch('https://amc-seats-backend-production.up.railway.app/notifications', {

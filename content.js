@@ -8,16 +8,24 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       sendResponse(response);
     });
     return true; // Keep the message channel open for async response
+  } else if (request.action === "getAllOccupiedSeats") {
+    getAllOccupiedSeats().then(sendResponse);
+    return true;
   }
 });
 
-async function checkSeats(seatNumbers) {
-  console.log("Starting seat check for:", seatNumbers);
+function getMovieInfo() {
   const movieInfo = document.querySelector(".headline + ul");
   const date = new Date(movieInfo.children[1].textContent);
   const theaterName = movieInfo.children[0].textContent;
   const movieShowtime = movieInfo.children[2].textContent;
   const movieName = movieInfo.previousElementSibling.textContent;
+  return { date, theaterName, movieShowtime, movieName };
+}
+
+async function checkSeats(seatNumbers) {
+  console.log("Starting seat check for:", seatNumbers);
+  const { date, theaterName, movieShowtime, movieName } = getMovieInfo();
 
   let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
     (button) => {
@@ -66,6 +74,41 @@ async function checkSeats(seatNumbers) {
   return {
     occupiedSeats,
     availableSeats,
+    theaterName,
+    movieShowtime,
+    movieName,
+    date,
+  };
+}
+
+async function getAllOccupiedSeats() {
+  const { date, theaterName, movieShowtime, movieName } = getMovieInfo();
+  // try to find seat buttons
+  let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+    (button) => button.textContent.trim().match(/^[A-Z][0-9]+$/),
+  );
+
+  // If we don't find many seats, try zooming in
+  if (seatButtons.length < 5) {
+    const zoomInButton = document.querySelector(
+      ".rounded-full.bg-gray-400.p-4",
+    );
+    if (zoomInButton) {
+      zoomInButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+        (button) => button.textContent.trim().match(/^[A-Z][0-9]+$/),
+      );
+    }
+  }
+
+  const occupiedSeats = seatButtons
+    .filter((button) => button.classList.contains("cursor-not-allowed"))
+    .map((button) => button.textContent.trim());
+
+  return {
+    occupiedSeats,
     theaterName,
     movieShowtime,
     movieName,
