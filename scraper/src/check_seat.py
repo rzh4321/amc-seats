@@ -252,7 +252,7 @@ def check_seats():
                         zoom_button = driver.find_element(
                             By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
                         )
-                        logger.info("Zoom button found:", zoom_button is not None)
+                        logger.info(f"Zoom button found: {zoom_button is not None}")
                         zoom_button.click()
                         logger.info("Clicked zoom button")
 
@@ -269,7 +269,7 @@ def check_seats():
                             == seat_number
                         ]
 
-                        logger.info("Seat buttons after zoom:", len(seat_buttons))
+                        logger.info(f"Seat buttons after zoom: {len(seat_buttons)}")
 
                     except NoSuchElementException:
                         logger.error("Zoom button not found")
@@ -279,13 +279,12 @@ def check_seats():
                             f"SEAT {seat_number} NOT FOUND ON SCREEN. SKIPPING THIS NOTIF..."
                         )
                         continue
-                        # return {"error": "Seat number not found on this screen."}
 
                 seat_button = seat_buttons[0]
                 is_occupied = (
                     "cursor-not-allowed" in seat_button.get_attribute("class").split()
                 )
-                logger.info("Seat occupied status:", is_occupied)
+                logger.info(f"Seat occupied status: {is_occupied}")
 
                 if not is_occupied and should_be_notified:
                     email_sent = send_email(
