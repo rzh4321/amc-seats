@@ -199,84 +199,19 @@ def check_seats():
                     f'Checking seat {seat_number} for {movie} at {showtime} on {show_date.strftime("%A, %m-%d-%Y")} for {email}...'
                 )
 
-                driver.get(url)
-
-                # Wait for seats to load
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "button"))
-                )
-                # Quick check if cookie dialog exists (using a short timeout)
-                try:
-                    WebDriverWait(driver, 1).until(
-                        EC.presence_of_element_located(
-                            (By.CLASS_NAME, "osano-cm-dialog")
-                        )
-                    )
-                    # If we found the dialog, try to close it
-                    try:
-                        close_button = WebDriverWait(driver, 2).until(
-                            EC.element_to_be_clickable(
-                                (By.CLASS_NAME, "osano-cm-dialog__close")
-                            )
-                        )
-                        driver.execute_script("arguments[0].click();", close_button)
-                        logger.info("Clicked close button on cookie dialog")
-
-                        # Wait for dialog to disappear
-                        WebDriverWait(driver, 2).until(
-                            EC.invisibility_of_element_located(
-                                (By.CLASS_NAME, "osano-cm-dialog")
-                            )
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to close cookie dialog: {str(e)}")
-                        # Fallback: remove dialog via JavaScript
-                        driver.execute_script(
-                            """
-                            var dialog = document.querySelector('.osano-cm-dialog');
-                            if (dialog) dialog.remove();
-                        """
-                        )
-                        logger.info("Removed cookie dialog using JavaScript")
-                except Exception:
-                    logger.info("No cookie dialog found, proceeding with seat check")
-
-                buttons = driver.find_elements(By.TAG_NAME, "button")
-                seat_buttons = [
-                    button for button in buttons if button.text.strip() == seat_number
-                ]
+                seat_buttons = attempt_to_find_seat(driver, url, seat_number)
 
                 if len(seat_buttons) == 0:
-                    try:
-                        logger.error("cant find seat, clicking zoom now...")
-                        zoom_button = driver.find_element(
-                            By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
-                        )
-                        logger.info(f"Zoom button found: {zoom_button is not None}")
-                        zoom_button.click()
-                        logger.info("Clicked zoom button")
-
-                        buttons = driver.execute_script(
-                            f"""
-                                return Array.from(document.querySelectorAll('button'))
-                            """
-                        )
-
-                        seat_buttons = [
-                            button
-                            for button in buttons
-                            if button.get_attribute("textContent").strip()
-                            == seat_number
-                        ]
-
-                        logger.info(f"Seat buttons after zoom: {len(seat_buttons)}")
-
-                    except NoSuchElementException:
-                        logger.error("Zoom button not found")
+                    logger.error(
+                        f"SEAT {seat_number} NOT FOUND ON SCREEN. TRYING AGAIN..."
+                    )
+                    driver.quit()
+                    driver = create_driver()
+                    seat_buttons = attempt_to_find_seat(driver, url, seat_number)
 
                     if len(seat_buttons) == 0:
                         logger.error(
-                            f"SEAT {seat_number} NOT FOUND ON SCREEN. SKIPPING THIS NOTIF..."
+                            f"SEAT {seat_number} NOT FOUND ON SCREEN AFTER RETRY. SKIPPING THIS NOTIF..."
                         )
                         continue
 
@@ -321,3 +256,69 @@ def check_seats():
         logger.error(f"Critical error in check_seats: {str(e)}")
     finally:
         driver.quit()
+
+
+def attempt_to_find_seat(driver, url, seat_number):
+    driver.get(url)
+
+    # Wait for seats to load
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.TAG_NAME, "button"))
+    )
+
+    # Handle cookie dialog
+    try:
+        WebDriverWait(driver, 1).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "osano-cm-dialog"))
+        )
+        try:
+            close_button = WebDriverWait(driver, 2).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-dialog__close"))
+            )
+            driver.execute_script("arguments[0].click();", close_button)
+            logger.info("Clicked close button on cookie dialog")
+        except Exception as e:
+            logger.error(f"Failed to close cookie dialog: {str(e)}")
+            driver.execute_script(
+                """
+                var dialog = document.querySelector('.osano-cm-dialog');
+                if (dialog) dialog.remove();
+                """
+            )
+            logger.info("Removed cookie dialog using JavaScript")
+    except Exception:
+        logger.info("No cookie dialog found")
+
+    # Try to find seat
+    buttons = driver.find_elements(By.TAG_NAME, "button")
+    seat_buttons = [button for button in buttons if button.text.strip() == seat_number]
+
+    # If no seat found, try zooming
+    if len(seat_buttons) == 0:
+        try:
+            logger.error("Can't find seat, attempting zoom...")
+            zoom_button = driver.find_element(
+                By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
+            )
+            logger.info(f"Zoom button found: {zoom_button is not None}")
+            zoom_button.click()
+            logger.info("Clicked zoom button")
+
+            buttons = driver.execute_script(
+                f"""
+                    return Array.from(document.querySelectorAll('button'))
+                """
+            )
+
+            seat_buttons = [
+                button
+                for button in buttons
+                if button.get_attribute("textContent").strip() == seat_number
+            ]
+
+            logger.info(f"Seat buttons after zoom: {len(seat_buttons)}")
+
+        except NoSuchElementException:
+            logger.error("Zoom button not found")
+
+    return seat_buttons
