@@ -16,6 +16,7 @@ from sqlalchemy import select
 from dotenv import load_dotenv
 import os
 import pytz
+from sqlalchemy.sql import func
 from datetime import datetime
 
 
@@ -324,6 +325,10 @@ def check_seats():
                         showtime_id,
                     )
                     if email_sent:
+                        with SessionLocal() as session:
+                            notification.last_notified = func.now()
+                            session.commit()
+                            logger.info('updated last_notified after sending email')
                         logger.info(
                             f"Notification email sent to {email} for seat {seat_number}"
                         )
