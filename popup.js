@@ -101,7 +101,9 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Checking seats:", formattedSeatNumbers);
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const currentUrl = tabs[0].url;
+      let currentUrl = tabs[0].url;
+      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname
+
       console.log("Current URL:", currentUrl);
 
       if (
@@ -180,7 +182,9 @@ document.addEventListener("DOMContentLoaded", function () {
     showLoading();
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const currentUrl = tabs[0].url;
+      let currentUrl = tabs[0].url;
+      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname
+
 
       if (
         !currentUrl.match(
