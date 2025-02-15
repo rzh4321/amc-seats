@@ -50,7 +50,9 @@ class Theater(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
 
-    showtimes = relationship("Showtime", back_populates="theater", cascade="all, delete")
+    showtimes = relationship(
+        "Showtime", back_populates="theater", cascade="all, delete"
+    )
 
 
 class Movie(Base):
@@ -77,7 +79,9 @@ class Showtime(Base):
 
     movie = relationship("Movie", back_populates="showtimes")
     theater = relationship("Theater", back_populates="showtimes")
-    seat_notifications = relationship("SeatNotification", back_populates="showtime", cascade="all, delete")
+    seat_notifications = relationship(
+        "SeatNotification", back_populates="showtime", cascade="all, delete"
+    )
 
 
 class SeatNotification(Base):

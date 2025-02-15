@@ -253,40 +253,13 @@ def check_seats():
                             By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
                         )
                         print("Zoom button found:", zoom_button is not None)
-
                         zoom_button.click()
-
-                        # container = driver.find_element(By.CSS_SELECTOR, '#main .react-transform-wrapper')
-                        # script = """
-                        # const container = arguments[0];
-                        # const rect = container.getBoundingClientRect();
-                        # const centerX = rect.left + rect.width / 2;
-                        # const centerY = rect.top + rect.height / 2;
-
-                        # // Move mouse to center
-                        # container.dispatchEvent(new MouseEvent('mousemove', {
-                        #     bubbles: true,
-                        #     clientX: centerX,
-                        #     clientY: centerY
-                        # }));
-
-                        # // Trigger wheel event
-                        # container.dispatchEvent(new WheelEvent('wheel', {
-                        #     deltaY: -10000,
-                        #     bubbles: true,
-                        #     clientX: centerX,
-                        #     clientY: centerY
-                        # }));
-                        # """
-
-                        # driver.execute_script(script, container)
-
                         print("Clicked zoom button")
 
                         buttons = driver.execute_script(
                             f"""
-    return Array.from(document.querySelectorAll('button'))
-"""
+                                return Array.from(document.querySelectorAll('button'))
+                            """
                         )
 
                         seat_buttons = [
@@ -302,8 +275,11 @@ def check_seats():
                         print("Zoom button not found")
 
                     if len(seat_buttons) == 0:
-                        print(f"SEAT {seat_number} NOT FOUND ON SCREEN")
-                        return {"error": "Seat number not found on this screen."}
+                        print(
+                            f"SEAT {seat_number} NOT FOUND ON SCREEN. SKIPPING THIS NOTIF..."
+                        )
+                        continue
+                        # return {"error": "Seat number not found on this screen."}
 
                 seat_button = seat_buttons[0]
                 is_occupied = (
@@ -326,10 +302,14 @@ def check_seats():
                     )
                     if email_sent:
                         with SessionLocal() as session:
-                            notif = session.query(SeatNotification).filter(SeatNotification.id == notification_id).first()
+                            notif = (
+                                session.query(SeatNotification)
+                                .filter(SeatNotification.id == notification_id)
+                                .first()
+                            )
                             notif.last_notified = func.now()
                             session.commit()
-                            logger.info('updated last_notified after sending email')
+                            logger.info("updated last_notified after sending email")
                             logger.info(
                                 f"Notification email sent to {email} for seat {seat_number}"
                             )

@@ -35,8 +35,8 @@ class SeatMonitor:
                     "check_seats"
                 ).trigger.interval.seconds
                 new_interval = max(
-                    300, current_interval - 60
-                )  # Decrease interval, min 5 minutes
+                    180, current_interval - 60
+                )  # Decrease interval, min 3 minutes
                 self.scheduler.reschedule_job(
                     "check_seats", trigger="interval", seconds=new_interval
                 )
