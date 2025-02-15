@@ -115,10 +115,10 @@ def send_email(
             server.starttls()
             server.login(sender_email, password)
             server.send_message(msg)
-            print(f"Email sent successfully to {to_email}")
+            logger.info(f"Email sent successfully to {to_email}")
             return True
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        logger.error(f"Error sending email: {str(e)}")
         return False
 
 
@@ -248,13 +248,13 @@ def check_seats():
 
                 if len(seat_buttons) == 0:
                     try:
-                        print("cant find seat, clicking zoom now...")
+                        logger.error("cant find seat, clicking zoom now...")
                         zoom_button = driver.find_element(
                             By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
                         )
-                        print("Zoom button found:", zoom_button is not None)
+                        logger.info("Zoom button found:", zoom_button is not None)
                         zoom_button.click()
-                        print("Clicked zoom button")
+                        logger.info("Clicked zoom button")
 
                         buttons = driver.execute_script(
                             f"""
@@ -269,13 +269,13 @@ def check_seats():
                             == seat_number
                         ]
 
-                        print("Seat buttons after zoom:", len(seat_buttons))
+                        logger.info("Seat buttons after zoom:", len(seat_buttons))
 
                     except NoSuchElementException:
-                        print("Zoom button not found")
+                        logger.error("Zoom button not found")
 
                     if len(seat_buttons) == 0:
-                        print(
+                        logger.error(
                             f"SEAT {seat_number} NOT FOUND ON SCREEN. SKIPPING THIS NOTIF..."
                         )
                         continue
@@ -285,7 +285,7 @@ def check_seats():
                 is_occupied = (
                     "cursor-not-allowed" in seat_button.get_attribute("class").split()
                 )
-                print("Seat occupied status:", is_occupied)
+                logger.info("Seat occupied status:", is_occupied)
 
                 if not is_occupied and should_be_notified:
                     email_sent = send_email(
