@@ -326,12 +326,13 @@ def check_seats():
                     )
                     if email_sent:
                         with SessionLocal() as session:
-                            notification.last_notified = func.now()
+                            notif = session.query(SeatNotification).filter(SeatNotification.id == notification_id).first()
+                            notif.last_notified = func.now()
                             session.commit()
                             logger.info('updated last_notified after sending email')
-                        logger.info(
-                            f"Notification email sent to {email} for seat {seat_number}"
-                        )
+                            logger.info(
+                                f"Notification email sent to {email} for seat {seat_number}"
+                            )
                     else:
                         logger.error(f"Failed to send email to {email}")
             except Exception as e:

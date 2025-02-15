@@ -63,8 +63,8 @@ class SeatMonitor:
 
         logger.info("Starting scheduler...")
         # Run check_seats immediately when starting
-        # logger.info("Running initial check...")
-        # check_seats()
+        logger.info("Running initial check...")
+        check_seats()
         try:
             self.scheduler.start()
         except (KeyboardInterrupt, SystemExit):
