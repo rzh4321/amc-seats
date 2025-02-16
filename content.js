@@ -7,7 +7,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       console.log("Sending response:", response);
       sendResponse(response);
     });
-    return true; // Keep the message channel open for async response
+    return true;
   } else if (request.action === "getAllOccupiedSeats") {
     getAllOccupiedSeats().then(sendResponse);
     return true;

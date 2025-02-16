@@ -1,5 +1,3 @@
-import asyncio
-import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -289,10 +287,18 @@ def attempt_to_find_seat(driver, url, seat_number):
     except Exception:
         logger.info("No cookie dialog found")
 
-    # Try to find seat
-    buttons = driver.find_elements(By.TAG_NAME, "button")
-    seat_buttons = [button for button in buttons if button.text.strip() == seat_number]
+    # try to find seats without zooming
+    buttons = driver.execute_script(
+        f"""
+            return Array.from(document.querySelectorAll('button'))
+        """
+    )
 
+    seat_buttons = [
+        button
+        for button in buttons
+        if button.get_attribute("textContent").strip() == seat_number
+    ]
     # If no seat found, try zooming
     if len(seat_buttons) == 0:
         try:

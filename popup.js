@@ -71,6 +71,10 @@ document.addEventListener("DOMContentLoaded", function () {
   seatNumberInput.addEventListener("input", function (e) {
     emailSection.style.display = "none";
     const rawInput = e.target.value.trim();
+    if (rawInput === '') {
+      checkSeatButton.disabled = true;
+      return;
+    }
     const cleanInput = rawInput.endsWith(",")
       ? rawInput.slice(0, -1)
       : rawInput;
@@ -89,9 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (invalidSeats.length > 0) {
       messageDiv.textContent =
         "Each seat must be one letter (A-Z) followed by a number (1-50). Example: 'A1' or 'A1, B1, C1'";
+        checkSeatButton.disabled = true;
       return;
     } else {
       messageDiv.textContent = "";
+      checkSeatButton.disabled = false;
     }
   });
 
