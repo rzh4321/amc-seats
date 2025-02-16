@@ -74,10 +74,11 @@ def send_email(
     is_specifically_requested,
     showtime_id,
 ):
+    # 500 emails per day
     password = os.getenv("app_password")
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    sender_email = "rzh4321@gmail.com"
+    sender_email = "amcseatalert@gmail.com"
 
     seat_notification_url = f"https://amc-seats-backend-production.up.railway.app/unsubscribe/{notification_id}"
     all_notifications_url = f"https://amc-seats-backend-production.up.railway.app/unsubscribe/{showtime_id}/{to_email}"
@@ -90,99 +91,51 @@ def send_email(
     email_body = f"""
     <html>
     <head>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
-            body {{
-                font-family: 'Arial', sans-serif;
-                line-height: 1.6;
+            * {{
                 margin: 0;
                 padding: 0;
-            }}
-            .container {{
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-                background-color: #ffffff;
-            }}
-            .header {{
-                background-color: #d40000;
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 5px 5px 0 0;
-            }}
-            .content {{
-                padding: 20px;
-                background-color: #f9f9f9;
-            }}
-            .movie-details {{
-                background-color: white;
-                padding: 15px;
-                border-radius: 5px;
-                margin: 15px 0;
-                border-left: 4px solid #d40000;
-            }}
-            .cta-button {{
-                display: inline-block;
-                background-color: #d40000;
-                color: white;
-                padding: 12px 25px;
-                text-decoration: none;
-                border-radius: 5px;
-                margin: 10px 0;
-            }}
-            .footer {{
-                background-color: #333333;
-                color: white;
-                padding: 15px;
-                text-align: center;
-                border-radius: 0 0 5px 5px;
-                font-size: 0.9em;
-            }}
-            .unsubscribe {{
-                color: #666666;
-                font-size: 0.8em;
-                text-align: center;
-                margin-top: 15px;
-            }}
-            a {{
-                color: #d40000;
-                text-decoration: none;
-            }}
-            .footer a {{
-                color: white;
+                box-sizing: border-box;
             }}
         </style>
     </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>AMC Seat Alert!</h1>
+    <body style="background-color: #1A1A1A; color: #FFFFFF; font-family: 'Inter', sans-serif; line-height: 1.6; padding: 20px;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #222222; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #000000; padding: 24px; text-align: center; border-bottom: 2px solid #333333;">
+                <h1 style="color: #F5F5F5; font-size: 28px; margin: 0;">AMC Seat Alert!</h1>
             </div>
-            <div class="content">
-                <h2>Good news! {intro}</h2>
+            
+            <div style="padding: 32px 24px;">
+                <h2 style="color: #E21836; font-size: 24px; margin-bottom: 24px; text-align: center;">{intro}</h2>
                 
-                <div class="movie-details">
-                    <h3>{movie}</h3>
-                    <p><strong>Theater:</strong> {theater}</p>
-                    <p><strong>Date:</strong> {show_date.strftime("%A, %B %d, %Y")}</p>
-                    <p><strong>Time:</strong> {showtime}</p>
-                    <p><strong>Seat:</strong> {seat_number}</p>
+                <div style="background-color: #2A2A2A; padding: 24px; border-radius: 8px; margin-bottom: 32px;">
+                    <h3 style="color: #FFFFFF; font-size: 22px; margin-bottom: 16px; text-align: center;">{movie}</h3>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Theater:</span> {theater}</p>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Date:</span> {show_date.strftime("%A, %B %d, %Y")}</p>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Time:</span> {showtime}</p>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Seat:</span> {seat_number}</p>
                 </div>
 
-                <center>
-                    <a href="{page_url}" class="cta-button">Book Your Seat Now</a>
-                </center>
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <a href="{page_url}" style="display: inline-block; background-color: #E21836; color: #FFFFFF; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Book Your Seat Now</a>
+                </div>
 
-                <div class="unsubscribe">
-                    <p>To stop notifications for seat {seat_number}:<br>
-                    <a href="{seat_notification_url}">Unsubscribe from this seat</a></p>
+                <div style="border-top: 1px solid #333333; padding-top: 24px;">
+                    <p style="color: #999999; margin-bottom: 16px; text-align: center;">Booked your seat or want to stop notifications?</p>
                     
-                    <p>To unsubscribe from ALL notifications for this showing:<br>
-                    <a href="{all_notifications_url}">Unsubscribe from all seats</a></p>
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <a href="{seat_notification_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px; margin-bottom: 12px;">Unsubscribe from Seat {seat_number}</a>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <a href="{all_notifications_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">Unsubscribe from this showing</a>
+                    </div>
                 </div>
             </div>
-            <div class="footer">
-                <p>This is an automated notification for your requested seat alert.</p>
+            
+            <div style="background-color: #000000; padding: 16px; text-align: center;">
+                <p style="color: #666666; font-size: 12px; margin: 0;">This email was sent automatically. Do not reply.</p>
             </div>
         </div>
     </body>
@@ -339,7 +292,6 @@ def check_seats():
         notification_count = len(notifications)
         logger.info(f"Found {notification_count} notifications to process")
 
-        # only process as many as we need to
         notification_data = [get_movie_info(notif) for notif in notifications]
 
     try:
