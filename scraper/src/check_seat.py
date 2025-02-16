@@ -17,6 +17,8 @@ import os
 import pytz
 from sqlalchemy.sql import func
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from multiprocessing import Pool
 
 
@@ -331,8 +333,6 @@ def process_single_notification(notification_info):
 
 def check_seats():
     logger.info("Starting seat check...")
-    cpu_count = os.cpu_count()
-    process_count = min(3, cpu_count - 1) if cpu_count else 2  # leave one CPU free
 
     with SessionLocal() as session:
         notifications = session.execute(select(SeatNotification)).scalars().all()
@@ -340,18 +340,21 @@ def check_seats():
         logger.info(f"Found {notification_count} notifications to process")
 
         # only process as many as we need to
-        actual_process_count = min(process_count, notification_count)
         notification_data = [get_movie_info(notif) for notif in notifications]
 
     try:
-        with Pool(processes=actual_process_count) as pool:
-            for i, _ in enumerate(
-                pool.imap_unordered(process_single_notification, notification_data)
-            ):
-                logger.info(f"Completed {i + 1}/{notification_count} notifications")
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(process_single_notification, data) 
+                    for data in notification_data]
+            
+            for i, future in enumerate(as_completed(futures)):
+                try:
+                    future.result()  # Get the result (or exception)
+                    logger.info(f"Completed {i + 1}/{notification_count} notifications")
+                except Exception as e:
+                    logger.error(f"Error processing notification: {str(e)}")
     except Exception as e:
-        logger.error(f"Error in process pool: {str(e)}")
-
+        logger.error(f"Error in thread pool: {str(e)}")
 
 def attempt_to_find_seat(driver, url, seat_number):
     driver.get(url)
