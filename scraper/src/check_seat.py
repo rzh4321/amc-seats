@@ -8,6 +8,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 import logging
 import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from .db import SessionLocal, SeatNotification, Movie, Theater, Showtime
 from sqlalchemy import select
@@ -16,6 +17,7 @@ import os
 import pytz
 from sqlalchemy.sql import func
 from datetime import datetime
+from multiprocessing import Pool
 
 
 load_dotenv()
@@ -84,29 +86,117 @@ def send_email(
         intro = f"""A seat ({seat_number}) just opened up"""
 
     email_body = f"""
-    Good news! {intro} for {movie} at {theater}!
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: 'Arial', sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+            }}
+            .header {{
+                background-color: #d40000;
+                color: white;
+                padding: 20px;
+                text-align: center;
+                border-radius: 5px 5px 0 0;
+            }}
+            .content {{
+                padding: 20px;
+                background-color: #f9f9f9;
+            }}
+            .movie-details {{
+                background-color: white;
+                padding: 15px;
+                border-radius: 5px;
+                margin: 15px 0;
+                border-left: 4px solid #d40000;
+            }}
+            .cta-button {{
+                display: inline-block;
+                background-color: #d40000;
+                color: white;
+                padding: 12px 25px;
+                text-decoration: none;
+                border-radius: 5px;
+                margin: 10px 0;
+            }}
+            .footer {{
+                background-color: #333333;
+                color: white;
+                padding: 15px;
+                text-align: center;
+                border-radius: 0 0 5px 5px;
+                font-size: 0.9em;
+            }}
+            .unsubscribe {{
+                color: #666666;
+                font-size: 0.8em;
+                text-align: center;
+                margin-top: 15px;
+            }}
+            a {{
+                color: #d40000;
+                text-decoration: none;
+            }}
+            .footer a {{
+                color: white;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>AMC Seat Alert!</h1>
+            </div>
+            <div class="content">
+                <h2>Good news! {intro}</h2>
+                
+                <div class="movie-details">
+                    <h3>{movie}</h3>
+                    <p><strong>Theater:</strong> {theater}</p>
+                    <p><strong>Date:</strong> {show_date.strftime("%A, %B %d, %Y")}</p>
+                    <p><strong>Time:</strong> {showtime}</p>
+                    <p><strong>Seat:</strong> {seat_number}</p>
+                </div>
 
-    Movie Details:
-    - Date: {show_date.strftime("%A, %B %d, %Y")}
-    - Time: {showtime}
-    - Seat: {seat_number}
-    
-    Click here to book your seat: {page_url}
-    
-    Important:
-    1. If you successfully book seat {seat_number} or no longer want it, click here to stop notifications for seat {seat_number}:
-    {seat_notification_url}
-    
-    2. If you want to unsubscribe from ALL notifications for this showing (if you were subscribed to multiple seats), click here:
-    {all_notifications_url}
-    
-    Note: If you don't unsubscribe, you'll continue to receive notifications when this seat becomes available until the showtime has passed.
+                <center>
+                    <a href="{page_url}" class="cta-button">Book Your Seat Now</a>
+                </center>
+
+                <div class="unsubscribe">
+                    <p>To stop notifications for seat {seat_number}:<br>
+                    <a href="{seat_notification_url}">Unsubscribe from this seat</a></p>
+                    
+                    <p>To unsubscribe from ALL notifications for this showing:<br>
+                    <a href="{all_notifications_url}">Unsubscribe from all seats</a></p>
+                </div>
+            </div>
+            <div class="footer">
+                <p>This is an automated notification for your requested seat alert.</p>
+            </div>
+        </div>
+    </body>
+    </html>
     """
 
-    msg = MIMEText(email_body)
+    msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Seat {seat_number} Available - {movie} at {theater}"
     msg["From"] = sender_email
     msg["To"] = to_email
+
+    # Attach both plain text and HTML versions
+    text_part = MIMEText(email_body.replace("<br>", "\n"), "plain")
+    html_part = MIMEText(email_body, "html")
+    msg.attach(text_part)
+    msg.attach(html_part)
 
     try:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -167,93 +257,100 @@ def get_movie_info(notification):
         )
 
 
-def check_seats():
-    logger.info("Starting seat check...")
-    # Get all notifications
-    with SessionLocal() as session:
-        notifications = session.execute(select(SeatNotification)).scalars().all()
-        logger.info(f"Found {len(notifications)} notifications to process")
-
+def process_single_notification(notification_info):
     driver = create_driver()
-
     try:
-        for notification in notifications:
-            try:
-                (
-                    notification_id,
-                    email,
-                    seat_number,
-                    should_be_notified,
-                    is_specifically_requested,
-                    show_date,
-                    showtime,
-                    url,
-                    theater,
-                    movie,
-                    showtime_id,
-                ) = get_movie_info(notification)
+        (
+            notification_id,
+            email,
+            seat_number,
+            should_be_notified,
+            is_specifically_requested,
+            show_date,
+            showtime,
+            url,
+            theater,
+            movie,
+            showtime_id,
+        ) = notification_info
+        logger.info(
+            f'Checking seat {seat_number} for {movie} at {showtime} on {show_date.strftime("%A, %m-%d-%Y")} for {email}...'
+        )
+        seat_buttons = attempt_to_find_seat(driver, url, seat_number)
 
-                logger.info(
-                    f'Checking seat {seat_number} for {movie} at {showtime} on {show_date.strftime("%A, %m-%d-%Y")} for {email}...'
+        if len(seat_buttons) == 0:
+            logger.error(f"SEAT {seat_number} NOT FOUND ON SCREEN. TRYING AGAIN...")
+            driver.quit()
+            driver = create_driver()
+            seat_buttons = attempt_to_find_seat(driver, url, seat_number)
+
+            if len(seat_buttons) == 0:
+                logger.error(
+                    f"SEAT {seat_number} NOT FOUND ON SCREEN AFTER RETRY. SKIPPING THIS NOTIF..."
                 )
+                return
 
-                seat_buttons = attempt_to_find_seat(driver, url, seat_number)
+        seat_button = seat_buttons[0]
+        is_occupied = "cursor-not-allowed" in seat_button.get_attribute("class").split()
+        logger.info(f"Seat occupied status: {is_occupied}")
 
-                if len(seat_buttons) == 0:
-                    logger.error(
-                        f"SEAT {seat_number} NOT FOUND ON SCREEN. TRYING AGAIN..."
+        if not is_occupied and should_be_notified:
+            email_sent = send_email(
+                email,
+                seat_number,
+                url,
+                show_date,
+                notification_id,
+                movie,
+                theater,
+                showtime,
+                is_specifically_requested,
+                showtime_id,
+            )
+            if email_sent:
+                with SessionLocal() as session:
+                    notif = (
+                        session.query(SeatNotification)
+                        .filter(SeatNotification.id == notification_id)
+                        .first()
                     )
-                    driver.quit()
-                    driver = create_driver()
-                    seat_buttons = attempt_to_find_seat(driver, url, seat_number)
-
-                    if len(seat_buttons) == 0:
-                        logger.error(
-                            f"SEAT {seat_number} NOT FOUND ON SCREEN AFTER RETRY. SKIPPING THIS NOTIF..."
-                        )
-                        continue
-
-                seat_button = seat_buttons[0]
-                is_occupied = (
-                    "cursor-not-allowed" in seat_button.get_attribute("class").split()
-                )
-                logger.info(f"Seat occupied status: {is_occupied}")
-
-                if not is_occupied and should_be_notified:
-                    email_sent = send_email(
-                        email,
-                        seat_number,
-                        url,
-                        show_date,
-                        notification_id,
-                        movie,
-                        theater,
-                        showtime,
-                        is_specifically_requested,
-                        showtime_id,
+                    notif.last_notified = func.now()
+                    session.commit()
+                    logger.info("updated last_notified after sending email")
+                    logger.info(
+                        f"Notification email sent to {email} for seat {seat_number}"
                     )
-                    if email_sent:
-                        with SessionLocal() as session:
-                            notif = (
-                                session.query(SeatNotification)
-                                .filter(SeatNotification.id == notification_id)
-                                .first()
-                            )
-                            notif.last_notified = func.now()
-                            session.commit()
-                            logger.info("updated last_notified after sending email")
-                            logger.info(
-                                f"Notification email sent to {email} for seat {seat_number}"
-                            )
-                    else:
-                        logger.error(f"Failed to send email to {email}")
-            except Exception as e:
-                logger.error(f"Error processing notification: {str(e)}")
-                continue  # Continue with next notification even if one fails
+            else:
+                logger.error(f"Failed to send email to {email}")
+
     except Exception as e:
-        logger.error(f"Critical error in check_seats: {str(e)}")
+        logger.error(f"Critical error for notification: {str(e)}")
     finally:
         driver.quit()
+
+
+def check_seats():
+    logger.info("Starting seat check...")
+    cpu_count = os.cpu_count()
+    process_count = min(3, cpu_count - 1) if cpu_count else 2  # leave one CPU free
+
+    with SessionLocal() as session:
+        notifications = session.execute(select(SeatNotification)).scalars().all()
+        notification_count = len(notifications)
+        logger.info(f"Found {notification_count} notifications to process")
+
+        # only process as many as we need to
+        actual_process_count = min(process_count, notification_count)
+        notification_data = [get_movie_info(notif) for notif in notifications]
+
+    try:
+        with Pool(processes=actual_process_count) as pool:
+            for i, _ in enumerate(
+                pool.imap_unordered(process_single_notification, notification_data)
+            ):
+                logger.info(f"Completed {i + 1}/{notification_count} notifications")
+    except Exception as e:
+        logger.error(f"Error in process pool: {str(e)}")
 
 
 def attempt_to_find_seat(driver, url, seat_number):
@@ -277,6 +374,7 @@ def attempt_to_find_seat(driver, url, seat_number):
             logger.info("Clicked close button on cookie dialog")
         except Exception as e:
             logger.error(f"Failed to close cookie dialog: {str(e)}")
+            # use programmatic approach over selenium
             driver.execute_script(
                 """
                 var dialog = document.querySelector('.osano-cm-dialog');
@@ -302,11 +400,13 @@ def attempt_to_find_seat(driver, url, seat_number):
     # If no seat found, try zooming
     if len(seat_buttons) == 0:
         try:
-            logger.error("Can't find seat, attempting zoom...")
+            logger.error(f"Can't find seat {seat_number}, attempting zoom...")
             zoom_button = driver.find_element(
                 By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
             )
-            logger.info(f"Zoom button found: {zoom_button is not None}")
+            logger.info(
+                f"Zoom button for seat {seat_number} found: {zoom_button is not None}"
+            )
             zoom_button.click()
             logger.info("Clicked zoom button")
 
@@ -322,7 +422,9 @@ def attempt_to_find_seat(driver, url, seat_number):
                 if button.get_attribute("textContent").strip() == seat_number
             ]
 
-            logger.info(f"Seat buttons after zoom: {len(seat_buttons)}")
+            logger.info(
+                f"Seat buttons after zoom for seat {seat_number}: {len(seat_buttons)}"
+            )
 
         except NoSuchElementException:
             logger.error("Zoom button not found")
