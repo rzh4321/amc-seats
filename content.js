@@ -16,16 +16,32 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 function getMovieInfo() {
   const movieInfo = document.querySelector(".headline + ul");
-  const date = new Date(movieInfo.children[1].textContent);
+  const dateText = movieInfo.children[1].textContent;
+  const timeText = movieInfo.children[2].textContent;
   const theaterName = movieInfo.children[0].textContent;
-  const movieShowtime = movieInfo.children[2].textContent;
   const movieName = movieInfo.previousElementSibling.textContent;
-  return { date, theaterName, movieShowtime, movieName };
+  
+  // Convert "Today, February 16, 2025" or "Thursday, February 16, 2025" to a Date
+  const cleanDateText = dateText.replace(/^(Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /, '');
+  
+  // Combine date and time
+  const dateTimeStr = `${cleanDateText} ${timeText}`;
+  
+  const date = new Date(dateTimeStr);
+    
+  // Format for PostgreSQL timestamptz
+  // Format: YYYY-MM-DD HH:MM:SS+TZ
+  const isoString = date.toISOString();
+  
+  return {
+    date: isoString, // This is in UTC, ready for PostgreSQL timestamptz
+    theaterName,
+    movieName,
+  };
 }
-
 async function checkSeats(seatNumbers) {
   console.log("Starting seat check for:", seatNumbers);
-  const { date, theaterName, movieShowtime, movieName } = getMovieInfo();
+  const { date, theaterName, movieName } = getMovieInfo();
 
   let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
     (button) => {
@@ -75,14 +91,13 @@ async function checkSeats(seatNumbers) {
     occupiedSeats,
     availableSeats,
     theaterName,
-    movieShowtime,
     movieName,
     date,
   };
 }
 
 async function getAllOccupiedSeats() {
-  const { date, theaterName, movieShowtime, movieName } = getMovieInfo();
+  const { date, theaterName, movieName } = getMovieInfo();
   // try to find seat buttons
   let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
     (button) => button.textContent.trim().match(/^[A-Z][0-9]+$/),
@@ -110,8 +125,7 @@ async function getAllOccupiedSeats() {
   return {
     occupiedSeats,
     theaterName,
-    movieShowtime,
-    movieName,
     date,
+    movieName,
   };
 }

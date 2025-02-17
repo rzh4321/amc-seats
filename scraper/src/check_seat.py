@@ -66,11 +66,11 @@ def send_email(
     to_email,
     seat_number,
     page_url,
-    show_date,
+    date_string,
     notification_id,
     movie,
     theater,
-    showtime,
+    time_string,
     is_specifically_requested,
     showtime_id,
 ):
@@ -112,8 +112,8 @@ def send_email(
                 <div style="background-color: #2A2A2A; padding: 24px; border-radius: 8px; margin-bottom: 32px;">
                     <h3 style="color: #FFFFFF; font-size: 22px; margin-bottom: 16px; text-align: center;">{movie}</h3>
                     <p style="margin-bottom: 12px;"><span style="color: #999999;">Theater:</span> {theater}</p>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Date:</span> {show_date.strftime("%A, %B %d, %Y")}</p>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Time:</span> {showtime}</p>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Date:</span> {date_string}</p>
+                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Time:</span> {time_string}</p>
                     <p style="margin-bottom: 12px;"><span style="color: #999999;">Seat:</span> {seat_number}</p>
                 </div>
 
@@ -188,12 +188,22 @@ def get_movie_info(notification):
         )
         movie_id = showtime_obj.movie_id
         theater_id = showtime_obj.theater_id
-        show_date = showtime_obj.show_date
-        showtime = showtime_obj.showtime.strftime("%I:%M %p")
+
         url = showtime_obj.seating_url
 
         theater_obj = session.query(Theater).filter(Theater.id == theater_id).first()
         theater = theater_obj.name
+        timezone = theater_obj.timezone
+        movie_datetime = showtime_obj.showtime
+        # Convert UTC to specified timezone
+        tz = pytz.timezone(timezone)
+        local_datetime = movie_datetime.astimezone(tz)
+
+        # Format date like "Sunday, February 16, 2025"
+        date_string = local_datetime.strftime("%A, %B %d, %Y")
+
+        # Format time like "7:30 pm"
+        time_string = local_datetime.strftime("%I:%M %p").lstrip("0").lower()
 
         movie_obj = session.query(Movie).filter(Movie.id == movie_id).first()
         movie = movie_obj.name
@@ -203,8 +213,8 @@ def get_movie_info(notification):
             seat_number,
             should_be_notified,
             is_specifically_requested,
-            show_date,
-            showtime,
+            date_string,
+            time_string,
             url,
             theater,
             movie,
@@ -221,15 +231,15 @@ def process_single_notification(notification_info):
             seat_number,
             should_be_notified,
             is_specifically_requested,
-            show_date,
-            showtime,
+            date_string,
+            time_string,
             url,
             theater,
             movie,
             showtime_id,
         ) = notification_info
         logger.info(
-            f'Checking seat {seat_number} for {movie} at {showtime} on {show_date.strftime("%A, %m-%d-%Y")} for {email}...'
+            f"Checking seat {seat_number} for {movie} at {date_string} on {time_string} for {email}..."
         )
         seat_buttons = attempt_to_find_seat(driver, url, seat_number)
 
@@ -254,11 +264,11 @@ def process_single_notification(notification_info):
                 email,
                 seat_number,
                 url,
-                show_date,
+                date_string,
                 notification_id,
                 movie,
                 theater,
-                showtime,
+                time_string,
                 is_specifically_requested,
                 showtime_id,
             )
@@ -296,9 +306,11 @@ def check_seats():
 
     try:
         with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [executor.submit(process_single_notification, data) 
-                    for data in notification_data]
-            
+            futures = [
+                executor.submit(process_single_notification, data)
+                for data in notification_data
+            ]
+
             for i, future in enumerate(as_completed(futures)):
                 try:
                     future.result()  # Get the result (or exception)
@@ -307,6 +319,7 @@ def check_seats():
                     logger.error(f"Error processing notification: {str(e)}")
     except Exception as e:
         logger.error(f"Error in thread pool: {str(e)}")
+
 
 def attempt_to_find_seat(driver, url, seat_number):
     driver.get(url)

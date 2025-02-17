@@ -65,6 +65,7 @@ class SeatMonitor:
         # Run check_seats immediately when starting
         logger.info("Running initial check...")
         check_seats()
+        # cleanup_database()
         try:
             self.scheduler.start()
         except (KeyboardInterrupt, SystemExit):

@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const messageDiv = document.getElementById("message");
   const emailSection = document.getElementById("emailSection");
   let seatingUrl;
-  let showDate;
   let seatNumbers = [];
   let theater;
   let movie;
@@ -14,7 +13,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const tabContents = document.querySelectorAll(".tab-content");
   const checkAllSeatsButton = document.getElementById("checkAllSeats");
   const loadingDiv = document.getElementById("loading");
-  let isCheckingAllSeats = false;
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -149,14 +147,13 @@ document.addEventListener("DOMContentLoaded", function () {
               occupiedSeats,
               availableSeats,
               theaterName,
-              movieShowtime,
               movieName,
-              date,
+              date
             } = response;
-            showDate = date;
             theater = theaterName;
-            showtime = movieShowtime;
+            showtime = date;
             movie = movieName;
+            seatNumbers = occupiedSeats;
             if (formattedSeatNumbers.length === 1) {
               // Single seat check
               if (occupiedSeats.length === 1) {
@@ -223,7 +220,10 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
           }
 
-          const { occupiedSeats, theaterName, movieShowtime, movieName, date } =
+          const { occupiedSeats,
+            theaterName,
+            movieName,
+            date } =
             response;
 
           if (occupiedSeats.length === 0) {
@@ -231,9 +231,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
           }
 
-          showDate = date;
           theater = theaterName;
-          showtime = movieShowtime;
+          showtime = date;
           movie = movieName;
           seatNumbers = occupiedSeats;
 
@@ -273,7 +272,6 @@ document.addEventListener("DOMContentLoaded", function () {
           theater,
           movie,
           showtime,
-          showDate: showDate.split("T")[0],
           areSpecficallyRequested: !isAnySeatsMode,
         }),
       });

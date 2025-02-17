@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from .db import SessionLocal, SeatNotification, Movie, Theater, Showtime
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, delete
+import pytz
 
 
 logger = logging.getLogger(__name__)
@@ -24,20 +25,10 @@ def cleanup_database():
                     movie
                 )  # Will cascade delete related showtimes and notifications
 
+            now = datetime.now(timezone.utc)
             # Delete past showtimes
-            current_datetime = datetime.now()
             past_showtimes = (
-                session.query(Showtime)
-                .filter(
-                    or_(
-                        Showtime.show_date < current_datetime.date(),
-                        and_(
-                            Showtime.show_date == current_datetime.date(),
-                            Showtime.showtime < current_datetime.time(),
-                        ),
-                    )
-                )
-                .all()
+                session.query(Showtime).filter(Showtime.showtime < now).all()
             )
 
             logger.info(f"found {len(past_showtimes)} old showtimes...")

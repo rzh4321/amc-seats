@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     func,
+    CheckConstraint,
 )
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -16,6 +17,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
+import pytz
 
 
 load_dotenv()
@@ -49,6 +51,13 @@ class Theater(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
+    timezone = Column(String(50), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            f"timezone = ANY(ARRAY{list(pytz.all_timezones)})", name="valid_timezone"
+        ),
+    )
 
     showtimes = relationship(
         "Showtime", back_populates="theater", cascade="all, delete"
@@ -73,8 +82,7 @@ class Showtime(Base):
     id = Column(Integer, primary_key=True)
     movie_id = Column(Integer, ForeignKey("movies.id"), nullable=False)
     theater_id = Column(Integer, ForeignKey("theaters.id"), nullable=False)
-    show_date = Column(Date, nullable=False)
-    showtime = Column(Time, nullable=False)
+    showtime = Column(DateTime(timezone=True), nullable=False)
     seating_url = Column(String(60), nullable=False)
 
     movie = relationship("Movie", back_populates="showtimes")
