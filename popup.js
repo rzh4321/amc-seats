@@ -108,8 +108,6 @@ document.addEventListener("DOMContentLoaded", function () {
       let currentUrl = tabs[0].url;
       currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname
 
-      console.log("Current URL:", currentUrl);
-
       if (
         !currentUrl.match(
           /https:\/\/www\.amctheatres\.com\/showtimes\/.*\/seats/,
@@ -123,7 +121,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       seatingUrl = currentUrl;
       showLoading();
-      console.log("Sending message to content script...");
       chrome.tabs.sendMessage(
         tabs[0].id,
         {
@@ -136,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           if (chrome.runtime.lastError) {
             console.log("Runtime error:", chrome.runtime.lastError);
-            showMessage("Error: Could not communicate with the page.", "error");
+            showMessage("Error: Could not communicate with the page. Try refreshing.", "error");
             return;
           }
 
@@ -321,4 +318,4 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
-// const response = await fetch('https://amc-seats-backend-production.up.railway.app/notifications', {
+// https://amc-seats-backend-production.up.railway.app/notifications

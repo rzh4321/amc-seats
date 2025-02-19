@@ -4,7 +4,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.action === "checkSeat") {
     console.log("Checking seats:", request.seatNumbers);
     checkSeats(request.seatNumbers).then((response) => {
-      console.log("Sending response:", response);
       sendResponse(response);
     });
     return true;
@@ -29,12 +28,10 @@ function getMovieInfo() {
   
   const date = new Date(dateTimeStr);
     
-  // Format for PostgreSQL timestamptz
-  // Format: YYYY-MM-DD HH:MM:SS+TZ
   const isoString = date.toISOString();
   
   return {
-    date: isoString, // This is in UTC, ready for PostgreSQL timestamptz
+    date: isoString,
     theaterName,
     movieName,
   };
@@ -50,17 +47,13 @@ async function checkSeats(seatNumbers) {
     },
   );
 
-  console.log("Initial seat buttons found:", seatButtons.length);
-
   if (seatButtons.length < seatNumbers.length) {
     const zoomInButton = document.querySelector(
       ".rounded-full.bg-gray-400.p-4",
     );
-    console.log("Zoom button found:", !!zoomInButton);
 
     if (zoomInButton) {
       zoomInButton.click();
-      console.log("Clicked zoom button");
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
