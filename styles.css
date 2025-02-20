@@ -135,6 +135,12 @@ button:disabled {
     border: 1px solid #2196f3;
 }
 
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .loading {
     display: none;
     text-align: center;
@@ -142,10 +148,57 @@ button:disabled {
     color: #2196f3;
 }
 
-.loading::after {
-    content: "⌛";
-    animation: loading 1s infinite;
+.lds-ripple,
+.lds-ripple div {
+  box-sizing: border-box;
 }
+.lds-ripple {
+  display: inline-block;
+  position: relative;
+  width: 40px;  /* Reduced from 80px */
+  height: 40px; /* Reduced from 80px */
+}
+.lds-ripple div {
+  position: absolute;
+  border: 2px solid currentColor; /* Reduced from 4px */
+  opacity: 1;
+  border-radius: 50%;
+  animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+.lds-ripple div:nth-child(2) {
+  animation-delay: -0.5s;
+}
+@keyframes lds-ripple {
+  0% {
+    top: 18px;    /* Reduced from 36px */
+    left: 18px;   /* Reduced from 36px */
+    width: 4px;   /* Reduced from 8px */
+    height: 4px;  /* Reduced from 8px */
+    opacity: 0;
+  }
+  4.9% {
+    top: 18px;    /* Reduced from 36px */
+    left: 18px;   /* Reduced from 36px */
+    width: 4px;   /* Reduced from 8px */
+    height: 4px;  /* Reduced from 8px */
+    opacity: 0;
+  }
+  5% {
+    top: 18px;    /* Reduced from 36px */
+    left: 18px;   /* Reduced from 36px */
+    width: 4px;   /* Reduced from 8px */
+    height: 4px;  /* Reduced from 8px */
+    opacity: 1;
+  }
+  100% {
+    top: 0;
+    left: 0;
+    width: 40px;  /* Reduced from 80px */
+    height: 40px; /* Reduced from 80px */
+    opacity: 0;
+  }
+}
+
 
 @keyframes loading {
     0% { opacity: 0.2; }

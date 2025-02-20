@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
     submitEmailButton.style;
 
     try {
-      const response = await fetch("http://localhost:8000/notifications", {
+      const response = await fetch("https://amc-seats-backend-production.up.railway.app/notifications", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -317,5 +317,3 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 });
-
-// https://amc-seats-backend-production.up.railway.app/notifications
