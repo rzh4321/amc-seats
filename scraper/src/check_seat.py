@@ -73,6 +73,7 @@ def send_email(
     time_string,
     is_specifically_requested,
     showtime_id,
+    first_time_notif,
 ):
     # 500 emails per day
     password = os.getenv("app_password")
@@ -84,61 +85,73 @@ def send_email(
     all_notifications_url = f"https://amc-seats-backend-production.up.railway.app/unsubscribe/{showtime_id}/{to_email}"
 
     if is_specifically_requested:
-        intro = f"""Seat {seat_number} is now available"""
+        intro = f"""{'Reminder: ' if not first_time_notif else ''}Seat {seat_number} is now available"""
     else:
-        intro = f"""A seat ({seat_number}) just opened up"""
+        intro = f"""{'Reminder: ' if not first_time_notif else ''}A seat ({seat_number}) just opened up"""
 
     email_body = f"""
     <html>
-    <head>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-        </style>
-    </head>
-    <body style="background-color: #1A1A1A; color: #FFFFFF; font-family: 'Inter', sans-serif; line-height: 1.6; padding: 20px;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #222222; border-radius: 12px; overflow: hidden;">
-            <div style="background-color: #000000; padding: 24px; text-align: center; border-bottom: 2px solid #333333;">
-                <h1 style="color: #F5F5F5; font-size: 28px; margin: 0;">AMC Seat Alert!</h1>
-            </div>
-            
-            <div style="padding: 32px 24px;">
-                <h2 style="color: #E21836; font-size: 24px; margin-bottom: 24px; text-align: center;">{intro}</h2>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+            <style>
+                * {{
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }}
+            </style>
+        </head>
+        <body style="background-color: #1A1A1A; color: #FFFFFF !important; font-family: 'Inter', sans-serif; line-height: 1.6; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #222222; border-radius: 12px; overflow: hidden;">
+                <div style="background-color: #000000; padding: 24px; text-align: center; border-bottom: 2px solid #333333;">
+                    <h1 style="color: #F5F5F5 !important; font-size: 28px; margin: 0;">AMC Seat Alert!</h1>
+                </div>
                 
-                <div style="background-color: #2A2A2A; padding: 24px; border-radius: 8px; margin-bottom: 32px;">
-                    <h3 style="color: #FFFFFF; font-size: 22px; margin-bottom: 16px; text-align: center;">{movie}</h3>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Theater:</span> {theater}</p>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Date:</span> {date_string}</p>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Time:</span> {time_string}</p>
-                    <p style="margin-bottom: 12px;"><span style="color: #999999;">Seat:</span> {seat_number}</p>
-                </div>
-
-                <div style="text-align: center; margin-bottom: 32px;">
-                    <a href="{page_url}" style="display: inline-block; background-color: #E21836; color: #FFFFFF; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Book Your Seat Now</a>
-                </div>
-
-                <div style="border-top: 1px solid #333333; padding-top: 24px;">
-                    <p style="color: #999999; margin-bottom: 16px; text-align: center;">Booked your seat or want to stop notifications?</p>
+                <div style="padding: 32px 24px;">
+                    <h2 style="color: #E21836 !important; font-size: 24px; margin-bottom: 24px; text-align: center;">{intro}</h2>
                     
-                    <div style="text-align: center; margin-bottom: 16px;">
-                        <a href="{seat_notification_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px; margin-bottom: 12px;">Unsubscribe from Seat {seat_number}</a>
+                    <div style="background-color: #2A2A2A; padding: 24px; border-radius: 8px; margin-bottom: 32px;">
+                        <h3 style="color: #FFFFFF !important; font-size: 22px; margin-bottom: 16px; text-align: center;">{movie}</h3>
+                        <p style="margin-bottom: 12px; color: #FFFFFF !important;">
+                            <span style="color: #999999 !important;">Theater:</span> 
+                            <span style="color: #FFFFFF !important;">{theater}</span>
+                        </p>
+                        <p style="margin-bottom: 12px; color: #FFFFFF !important;">
+                            <span style="color: #999999 !important;">Date:</span> 
+                            <span style="color: #FFFFFF !important;">{date_string}</span>
+                        </p>
+                        <p style="margin-bottom: 12px; color: #FFFFFF !important;">
+                            <span style="color: #999999 !important;">Time:</span> 
+                            <span style="color: #FFFFFF !important;">{time_string}</span>
+                        </p>
+                        <p style="margin-bottom: 12px; color: #FFFFFF !important;">
+                            <span style="color: #999999 !important;">Seat:</span> 
+                            <span style="color: #FFFFFF !important;">{seat_number}</span>
+                        </p>
                     </div>
-                    
-                    <div style="text-align: center;">
-                        <a href="{all_notifications_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">Unsubscribe from this showing</a>
+
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <a href="{page_url}" style="display: inline-block; background-color: #E21836; color: #FFFFFF !important; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Book Your Seat Now</a>
                     </div>
+
+                    <div style="border-top: 1px solid #333333; padding-top: 24px;">
+                        <p style="color: #999999 !important; margin-bottom: 16px; text-align: center;">Booked your seat or want to stop notifications?</p>
+                        
+                        <div style="text-align: center; margin-bottom: 16px;">
+                            <a href="{seat_notification_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF !important; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px; margin-bottom: 12px;">Unsubscribe from Seat {seat_number}</a>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <a href="{all_notifications_url}" style="display: inline-block; background-color: #333333; color: #FFFFFF !important; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-size: 14px;">Unsubscribe from this showing</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background-color: #000000; padding: 16px; text-align: center;">
+                    <p style="color: #666666 !important; font-size: 12px; margin: 0;">This email was sent automatically. Do not reply.</p>
                 </div>
             </div>
-            
-            <div style="background-color: #000000; padding: 16px; text-align: center;">
-                <p style="color: #666666; font-size: 12px; margin: 0;">This email was sent automatically. Do not reply.</p>
-            </div>
-        </div>
-    </body>
+        </body>
     </html>
     """
 
@@ -170,13 +183,15 @@ def get_movie_info(notification):
     email = notification.user_email
     seat_number = notification.seat_number
     last_notified = notification.last_notified
+    first_time_notif = True
     if last_notified is not None:
 
         current_time = datetime.now(pytz.UTC)
         time_difference = current_time - last_notified
         should_be_notified = time_difference.total_seconds() > (
-            12 * 3600
-        )  # more than 12 hours
+            6 * 3600
+        )  # more than 6 hours
+        first_time_notif = False
     else:
         should_be_notified = True
 
@@ -219,6 +234,7 @@ def get_movie_info(notification):
             theater,
             movie,
             showtime_id,
+            first_time_notif,
         )
 
 
@@ -237,6 +253,7 @@ def process_single_notification(notification_info):
             theater,
             movie,
             showtime_id,
+            first_time_notif,
         ) = notification_info
         logger.info(
             f"Checking seat {seat_number} for {movie} at {date_string} on {time_string} for {email}..."
@@ -271,6 +288,7 @@ def process_single_notification(notification_info):
                 time_string,
                 is_specifically_requested,
                 showtime_id,
+                first_time_notif,
             )
             if email_sent:
                 with SessionLocal() as session:
