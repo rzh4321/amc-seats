@@ -1,18 +1,17 @@
-# AMC Seats Chrome Extension
+# AMC SeatAlert Chrome Extension
 
-A Chrome extension component of a larger system designed to monitor seat availability for AMC theater showings and notify users when their desired seat becomes available.
+A [Chrome extension](https://chromewebstore.google.com/detail/amc-seatalert/gcehgmpfomiadbpkllbhmckebodcjkbe) for monitoring seat availability for AMC theater showings and notify users when their desired seat becomes available.
 
 ## Note
 
-This repository contains only the Chrome extension portion of the AMC Seat Checker system. The complete notification system requires additional components that are maintained in separate repositories:
+This repository contains only the Chrome extension and automated web scraper of the AMC Seat Checker system. The backend server for processing notifications is maintained in a separate repository:
 
 - [Backend FastAPI server for handling notifications](https://github.com/rzh4321/amc-seats-backend)
-- [Automated web scraper for seat monitoring](.)
 
 ## Features
 
 - Check real-time seat availability for AMC theater showings
-- User-friendly popup interface
+- User-friendly popup interface, consistent with AMC's theme
 - Support for all standard AMC theater seating formats (A1-Z50)
 - Integration capabilities with notification backend
 
@@ -20,10 +19,10 @@ This repository contains only the Chrome extension portion of the AMC Seat Check
 
 ```txt
 amc-seat-checker/
-├── manifest.json        # Extension configuration
-├── popup.html          # Extension popup interface
-├── popup.js            # Popup functionality
-└── content.js          # Content script for seat checking
+├── manifest.json       
+├── popup.html        
+├── popup.js       
+└── content.js     
 ```
 
 ## Local Development
@@ -44,7 +43,7 @@ git clone https://github.com/rzh4321/amc-seats
 
 ## Technical Details
 
-- Built using Chrome Extension Manifest V3
+- Built using Chrome Extension Manifest V3 and Selenium for web scraping
 - Uses content scripts to interact with AMC's seating interface
 - Implements asynchronous messaging between popup and content scripts
 
