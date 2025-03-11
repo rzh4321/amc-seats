@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const seatNumberInput = document.getElementById("seatNumber");
   const checkSeatButton = document.getElementById("checkSeat");
+  const specificSeatsForm = document.getElementById("specificSeats");
   const submitEmailButton = document.getElementById("submitEmail");
   const messageDiv = document.getElementById("message");
   const emailSection = document.getElementById("emailSection");
@@ -99,7 +100,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  checkSeatButton.addEventListener("click", function () {
+  specificSeatsForm.addEventListener("submit", function (e) {
+    e.preventDefault();
     const formattedSeatNumbers = seatNumbers.map((seat) => seat.toUpperCase());
 
     console.log("Checking seats:", formattedSeatNumbers);
@@ -133,7 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
           if (chrome.runtime.lastError) {
             console.log("Runtime error:", chrome.runtime.lastError);
-            showMessage("Error: Could not communicate with the page. Try refreshing.", "error");
+            showMessage("Error: If you are currently on the seating map, try refreshing the page.", "error");
             return;
           }
 
