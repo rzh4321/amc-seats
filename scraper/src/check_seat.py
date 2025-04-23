@@ -325,8 +325,8 @@ def check_seats():
     # process notifications in parallel using a thread pool
     # and immediately send them to process_single_notification
     try:
-        max_workers_info = 4  # For get_movie_info
-        max_workers_process = 4  # For process_single_notification
+        max_workers_info = 6  # For get_movie_info
+        max_workers_process = 12  # For process_single_notification
 
         with ThreadPoolExecutor(
             max_workers=max_workers_info
