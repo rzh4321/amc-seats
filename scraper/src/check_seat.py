@@ -75,7 +75,7 @@ def send_email(
     showtime_id,
     first_time_notif,
 ):
-    logger.info(f'SENT EMAIL=============================================\n')
+    logger.info(f"SENT EMAIL=============================================\n")
     # 500 emails per day
     password = os.getenv("app_password")
     smtp_server = "smtp.gmail.com"
@@ -328,11 +328,14 @@ def check_seats():
         max_workers_info = 4  # For get_movie_info
         max_workers_process = 4  # For process_single_notification
 
-        with ThreadPoolExecutor(max_workers=max_workers_info) as info_executor, \
-             ThreadPoolExecutor(max_workers=max_workers_process) as process_executor:
+        with ThreadPoolExecutor(
+            max_workers=max_workers_info
+        ) as info_executor, ThreadPoolExecutor(
+            max_workers=max_workers_process
+        ) as process_executor:
 
             # call get_movie_info on each notif, submit all jobs to thread pool
-            # executor.submit() is non blocking, it just queues get_movie_info quickly and it 
+            # executor.submit() is non blocking, it just queues get_movie_info quickly and it
             # start asynchronously
             info_futures = {
                 info_executor.submit(get_movie_info, notif): notif

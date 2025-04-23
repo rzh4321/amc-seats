@@ -53,7 +53,7 @@ class SeatMonitor:
         self.scheduler.add_job(
             self.check_seats_wrapper,
             "interval",
-            minutes=2,
+            minutes=3,
             id="check_seats",
             max_instances=1,
             coalesce=True,  # If multiple instances are missed, only run once
