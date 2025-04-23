@@ -28,11 +28,11 @@ class SeatMonitor:
 
             # Calculate time to next run
             next_run_delay = max(
-                0, (self.min_interval - duration).total_seconds()
+                5, (self.min_interval - duration).total_seconds()
             )
 
             if next_run_delay == 0:
-                logger.info("Job took longer than interval. Running again immediately.")
+                logger.info(f"Job took longer than interval. Running again immediately ({int(next_run_delay)} seconds).")
             else:
                 logger.info(f"Scheduling next run in {int(next_run_delay)} seconds.")
 
