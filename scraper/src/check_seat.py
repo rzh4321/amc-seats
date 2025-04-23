@@ -275,7 +275,7 @@ def process_single_notification(notification_info):
 
         seat_button = seat_buttons[0]
         is_occupied = "cursor-not-allowed" in seat_button.get_attribute("class").split()
-        # logger.info(f"Seat occupied status: {is_occupied}")
+        logger.info(f"Seat {seat_number} is available: {not is_occupied}")
 
         if not is_occupied and should_be_notified:
             email_sent = send_email(
