@@ -75,6 +75,7 @@ def send_email(
     showtime_id,
     first_time_notif,
 ):
+    logger.info(f'SENT EMAIL=============================================\n')
     # 500 emails per day
     password = os.getenv("app_password")
     smtp_server = "smtp.gmail.com"
@@ -171,7 +172,7 @@ def send_email(
             server.starttls()
             server.login(sender_email, password)
             server.send_message(msg)
-            logger.info(f"Email sent successfully to {to_email}")
+            # logger.info(f"Email sent successfully to {to_email}")
             return True
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
@@ -261,7 +262,7 @@ def process_single_notification(notification_info):
         seat_buttons = attempt_to_find_seat(driver, url, seat_number)
 
         if len(seat_buttons) == 0:
-            logger.error(f"SEAT {seat_number} NOT FOUND ON SCREEN. TRYING AGAIN...")
+            # logger.error(f"SEAT {seat_number} NOT FOUND ON SCREEN. TRYING AGAIN...")
             driver.quit()
             driver = create_driver()
             seat_buttons = attempt_to_find_seat(driver, url, seat_number)
@@ -274,7 +275,7 @@ def process_single_notification(notification_info):
 
         seat_button = seat_buttons[0]
         is_occupied = "cursor-not-allowed" in seat_button.get_attribute("class").split()
-        logger.info(f"Seat occupied status: {is_occupied}")
+        # logger.info(f"Seat occupied status: {is_occupied}")
 
         if not is_occupied and should_be_notified:
             email_sent = send_email(
@@ -299,10 +300,10 @@ def process_single_notification(notification_info):
                     )
                     notif.last_notified = func.now()
                     session.commit()
-                    logger.info("updated last_notified after sending email")
-                    logger.info(
-                        f"Notification email sent to {email} for seat {seat_number}"
-                    )
+                    # logger.info("updated last_notified after sending email")
+                    # logger.info(
+                    #     f"Notification email sent to {email} for seat {seat_number}"
+                    # )
             else:
                 logger.error(f"Failed to send email to {email}")
 
@@ -316,27 +317,55 @@ def check_seats():
     logger.info("Starting seat check...")
 
     with SessionLocal() as session:
+        # first fetch all notifications from DB
         notifications = session.execute(select(SeatNotification)).scalars().all()
         notification_count = len(notifications)
         logger.info(f"Found {notification_count} notifications to process")
 
-        notification_data = [get_movie_info(notif) for notif in notifications]
-
+    # process notifications in parallel using a thread pool
+    # and immediately send them to process_single_notification
     try:
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            futures = [
-                executor.submit(process_single_notification, data)
-                for data in notification_data
-            ]
+        max_workers_info = 4  # For get_movie_info
+        max_workers_process = 4  # For process_single_notification
 
-            for i, future in enumerate(as_completed(futures)):
+        with ThreadPoolExecutor(max_workers=max_workers_info) as info_executor, \
+             ThreadPoolExecutor(max_workers=max_workers_process) as process_executor:
+
+            # call get_movie_info on each notif, submit all jobs to thread pool
+            # executor.submit() is non blocking, it just queues get_movie_info quickly and it 
+            # start asynchronously
+            info_futures = {
+                info_executor.submit(get_movie_info, notif): notif
+                for notif in notifications
+            }
+
+            # As soon as get_movie_info returns a result, pass it to process_single_notification
+            # as_completed() is a generator that yields future objects as soon as they are done
+            process_futures = []
+            for future in as_completed(info_futures):
                 try:
-                    future.result()  # Get the result (or exception)
+                    # future.result() wont block bc as_completed() only gives us finished futures
+                    data = future.result()
+                    # Submit processing job
+                    # again, submit() is nonblocking and just queues the job to be executed by another
+                    # thread. Append the returned future to process_futures so we can track and wait for
+                    # it later
+                    pf = process_executor.submit(process_single_notification, data)
+                    process_futures.append(pf)
+                except Exception as e:
+                    logger.error(f"Failed to get movie info: {str(e)}")
+
+            # Wait for all processing to complete
+            # as soon as a future in process_futures is complete, log it out
+            for i, future in enumerate(as_completed(process_futures)):
+                try:
+                    future.result()
                     logger.info(f"Completed {i + 1}/{notification_count} notifications")
                 except Exception as e:
                     logger.error(f"Error processing notification: {str(e)}")
+
     except Exception as e:
-        logger.error(f"Error in thread pool: {str(e)}")
+        logger.error(f"Error in thread pools: {str(e)}")
 
 
 def attempt_to_find_seat(driver, url, seat_number):
@@ -357,9 +386,9 @@ def attempt_to_find_seat(driver, url, seat_number):
                 EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-dialog__close"))
             )
             driver.execute_script("arguments[0].click();", close_button)
-            logger.info("Clicked close button on cookie dialog")
+            # logger.info("Clicked close button on cookie dialog")
         except Exception as e:
-            logger.error(f"Failed to close cookie dialog: {str(e)}")
+            # logger.error(f"Failed to close cookie dialog: {str(e)}")
             # use programmatic approach over selenium
             driver.execute_script(
                 """
@@ -367,9 +396,10 @@ def attempt_to_find_seat(driver, url, seat_number):
                 if (dialog) dialog.remove();
                 """
             )
-            logger.info("Removed cookie dialog using JavaScript")
+            # logger.info("Removed cookie dialog using JavaScript")
     except Exception:
-        logger.info("No cookie dialog found")
+        # logger.info("No cookie dialog found")
+        pass
 
     # try to find seats without zooming
     buttons = driver.execute_script(
@@ -386,15 +416,15 @@ def attempt_to_find_seat(driver, url, seat_number):
     # If no seat found, try zooming
     if len(seat_buttons) == 0:
         try:
-            logger.error(f"Can't find seat {seat_number}, attempting zoom...")
+            # logger.error(f"Can't find seat {seat_number}, attempting zoom...")
             zoom_button = driver.find_element(
                 By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
             )
-            logger.info(
-                f"Zoom button for seat {seat_number} found: {zoom_button is not None}"
-            )
+            # logger.info(
+            #     f"Zoom button for seat {seat_number} found: {zoom_button is not None}"
+            # )
             zoom_button.click()
-            logger.info("Clicked zoom button")
+            # logger.info("Clicked zoom button")
 
             buttons = driver.execute_script(
                 f"""
@@ -408,9 +438,9 @@ def attempt_to_find_seat(driver, url, seat_number):
                 if button.get_attribute("textContent").strip() == seat_number
             ]
 
-            logger.info(
-                f"Seat buttons after zoom for seat {seat_number}: {len(seat_buttons)}"
-            )
+            # logger.info(
+            #     f"Seat buttons after zoom for seat {seat_number}: {len(seat_buttons)}"
+            # )
 
         except NoSuchElementException:
             logger.error("Zoom button not found")
