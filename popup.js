@@ -28,8 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .classList.add("active");
 
       emailSection.style.display = "none";
-      messageDiv.textContent = "";
-      messageDiv.className = "";
+      clearMessage();
     });
   });
 
@@ -52,6 +51,11 @@ document.addEventListener("DOMContentLoaded", function () {
     messageDiv.className = type;
   }
 
+  function clearMessage() {
+    messageDiv.textContent = "";
+    messageDiv.className = "";
+  }
+
   function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -68,8 +72,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   seatNumberInput.addEventListener("input", function (e) {
-    emailSection.style.display = "none";
     const rawInput = e.target.value.trim();
+    let isInvalid = false;
     if (rawInput === '') {
       checkSeatButton.disabled = true;
       return;
@@ -78,26 +82,73 @@ document.addEventListener("DOMContentLoaded", function () {
       ? rawInput.slice(0, -1)
       : rawInput;
 
-    // split into array if comma-separated, or make single item array
-    seatNumbers = Array.from(
-      new Set(
-        cleanInput.includes(",")
-          ? cleanInput.split(",").map((seat) => seat.trim().toUpperCase())
-          : [cleanInput.toUpperCase()],
-      ),
-    );
+    // each part should be a seat number (A1), or a range of seat numbers (A1-A13)
+    let parts = cleanInput.split(",").map((part) => part.trim().toUpperCase());
 
-    const invalidSeats = seatNumbers.filter((seat) => !isValidSeatNumber(seat));
+  let expandedSeats = [];
+    
 
-    if (invalidSeats.length > 0) {
-      messageDiv.textContent =
-        "Each seat must be one letter (A-Z) followed by a number (1-50). Example: 'A1' or 'A1, B1, C1'";
+
+      parts.forEach((part) => {
+        if (part.includes("-")) {
+          // Handle range input like A1-A13
+          const [start, end] = part.split("-").map((p) => p.trim());
+    
+          if (!isValidSeatNumber(start) || !isValidSeatNumber(end)) {
+            isInvalid = true;
+            return;
+          }
+    
+          const startMatch = start.match(/^([A-Z])(\d{1,2})$/);
+          const endMatch = end.match(/^([A-Z])(\d{1,2})$/);
+    
+          if (!startMatch || !endMatch) {
+            isInvalid = true;
+            return;
+          }
+    
+          const [ , startRow, startNumber ] = startMatch;
+          const [ , endRow, endNumber ] = endMatch;
+    
+          // Rows must match for a valid range
+          if (startRow !== endRow) {
+            isInvalid = true;
+            return;
+          }
+    
+          const startNum = parseInt(startNumber, 10);
+          const endNum = parseInt(endNumber, 10);
+    
+          if (startNum > endNum || startNum <= 0 || endNum > 50) {
+            return;
+          }
+    
+          // Expand the range
+          for (let i = startNum; i <= endNum; i++) {
+            expandedSeats.push(`${startRow}${i}`);
+          }
+        } else {
+          // Handle single seat input like A1
+          if (!isValidSeatNumber(part)) {
+            isInvalid = true;
+            return;
+          }
+          expandedSeats.push(part);
+        }
+      });
+    
+      // Remove duplicates
+      seatNumbers = Array.from(new Set(expandedSeats));
+    
+      if (isInvalid) {
+        showMessage(
+          "Each seat must be one letter (A-Z) followed by a number (1-50). Example: 'A1' or 'A1, B1, C1' or 'A1-A5'.", "error");
         checkSeatButton.disabled = true;
-      return;
-    } else {
-      messageDiv.textContent = "";
-      checkSeatButton.disabled = false;
-    }
+        return;
+      } else {
+        clearMessage();
+        checkSeatButton.disabled = false;
+      }
   });
 
   specificSeatsForm.addEventListener("submit", function (e) {
@@ -128,57 +179,54 @@ document.addEventListener("DOMContentLoaded", function () {
         {
           action: "checkSeat",
           seatNumbers: formattedSeatNumbers,
-        },
-        function (response) {
-          hideLoading();
-          console.log("Received response:", response);
-
-          if (chrome.runtime.lastError) {
-            console.log("Runtime error:", chrome.runtime.lastError);
-            showMessage("Error: If you are currently on the seating map, try refreshing the page.", "error");
-            return;
-          }
-
-          if (response.error) {
-            showMessage(response.error, "error");
-          } else {
-            const {
-              occupiedSeats,
-              availableSeats,
-              theaterName,
-              movieName,
-              date
-            } = response;
-            theater = theaterName;
-            showtime = date;
-            movie = movieName;
-            seatNumbers = occupiedSeats;
-            if (formattedSeatNumbers.length === 1) {
-              // Single seat check
-              if (occupiedSeats.length === 1) {
-                showMessage("This seat is currently occupied.", "info");
-                emailSection.style.display = "block";
-              } else {
-                showMessage("This seat is currently available!", "success");
-                emailSection.style.display = "none";
-              }
-            } else {
-              // Multiple seats check
-              if (availableSeats.length > 0) {
-                messageDiv.textContent = `The following seats are already available: ${availableSeats.join(", ")}`;
-                emailSection.style.display = "none";
-              } else {
-                messageDiv.textContent =
-                  "All requested seats are currently occupied.";
-                emailSection.style.display = "block";
-              }
-            }
-          }
-        },
-      );
-    });
+        }, handleResponse)
   });
+  function handleResponse(response) {
+    hideLoading();
+    console.log("Received response:", response);
 
+    if (chrome.runtime.lastError) {
+      console.log("Runtime error:", chrome.runtime.lastError);
+      showMessage("Error: If you are currently on the seating map, try refreshing the page.", "error");
+      return;
+    }
+
+    if (response.error) {
+      showMessage(response.error, "error");
+    } else {
+      const {
+        occupiedSeats,
+        availableSeats,
+        theaterName,
+        movieName,
+        date
+      } = response;
+      theater = theaterName;
+      showtime = date;
+      movie = movieName;
+      seatNumbers = occupiedSeats;
+      if (formattedSeatNumbers.length === 1) {
+        // Single seat check
+        if (occupiedSeats.length === 1) {
+          showMessage("This seat is currently occupied.", "info");
+          emailSection.style.display = "block";
+        } else {
+          showMessage("This seat is currently available!", "success");
+          emailSection.style.display = "none";
+        }
+      } else {
+        // Multiple seats check
+        if (availableSeats.length > 0) {
+          showMessage(`The following seats are already available: ${availableSeats.join(", ")}`, 'success');
+          emailSection.style.display = "none";
+        } else {
+          showMessage("All requested seats are currently occupied.");
+          emailSection.style.display = "block";
+        }
+      }
+    }
+  }
+  
   checkAllSeatsButton.addEventListener("click", function () {
     isCheckingAllSeats = true;
     showLoading();
@@ -318,4 +366,4 @@ document.addEventListener("DOMContentLoaded", function () {
       console.error("Error:", error);
     }
   });
-});
+})});

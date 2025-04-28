@@ -19,10 +19,10 @@ This repository contains only the Chrome extension and automated web scraper of 
 
 ```txt
 amc-seat-checker/
-├── manifest.json       
-├── popup.html        
-├── popup.js       
-└── content.js     
+├── manifest.json
+├── popup.html
+├── popup.js
+└── content.js
 ```
 
 ## Local Development

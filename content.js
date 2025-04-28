@@ -19,17 +19,20 @@ function getMovieInfo() {
   const timeText = movieInfo.children[2].textContent;
   const theaterName = movieInfo.children[0].textContent;
   const movieName = movieInfo.previousElementSibling.textContent;
-  
+
   // Convert "Today, February 16, 2025" or "Thursday, February 16, 2025" to a Date
-  const cleanDateText = dateText.replace(/^(Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /, '');
-  
+  const cleanDateText = dateText.replace(
+    /^(Today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /,
+    "",
+  );
+
   // Combine date and time
   const dateTimeStr = `${cleanDateText} ${timeText}`;
-  
+
   const date = new Date(dateTimeStr);
-    
+
   const isoString = date.toISOString();
-  
+
   return {
     date: isoString,
     theaterName,

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "AMC SeatAlert",
   "version": "1.0.1",
-  "description": "Get email notifications when your desired AMC theater seats become available.",  
-  "permissions": ["activeTab"],
+  "description": "Get email notifications when your desired AMC theater seats become available.",
+  "permissions": ["activeTab", "tabs"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
