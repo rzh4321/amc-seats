@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
   seatNumberInput.addEventListener("input", function (e) {
     const rawInput = e.target.value.trim();
     let isInvalid = false;
-    if (rawInput === '') {
+    if (rawInput === "") {
       checkSeatButton.disabled = true;
       return;
     }
@@ -85,70 +85,71 @@ document.addEventListener("DOMContentLoaded", function () {
     // each part should be a seat number (A1), or a range of seat numbers (A1-A13)
     let parts = cleanInput.split(",").map((part) => part.trim().toUpperCase());
 
-  let expandedSeats = [];
-    
+    let expandedSeats = [];
 
+    parts.forEach((part) => {
+      if (part.includes("-")) {
+        // Handle range input like A1-A13
+        const [start, end] = part.split("-").map((p) => p.trim());
 
-      parts.forEach((part) => {
-        if (part.includes("-")) {
-          // Handle range input like A1-A13
-          const [start, end] = part.split("-").map((p) => p.trim());
-    
-          if (!isValidSeatNumber(start) || !isValidSeatNumber(end)) {
-            isInvalid = true;
-            return;
-          }
-    
-          const startMatch = start.match(/^([A-Z])(\d{1,2})$/);
-          const endMatch = end.match(/^([A-Z])(\d{1,2})$/);
-    
-          if (!startMatch || !endMatch) {
-            isInvalid = true;
-            return;
-          }
-    
-          const [ , startRow, startNumber ] = startMatch;
-          const [ , endRow, endNumber ] = endMatch;
-    
-          // Rows must match for a valid range
-          if (startRow !== endRow) {
-            isInvalid = true;
-            return;
-          }
-    
-          const startNum = parseInt(startNumber, 10);
-          const endNum = parseInt(endNumber, 10);
-    
-          if (startNum > endNum || startNum <= 0 || endNum > 50) {
-            return;
-          }
-    
-          // Expand the range
-          for (let i = startNum; i <= endNum; i++) {
-            expandedSeats.push(`${startRow}${i}`);
-          }
-        } else {
-          // Handle single seat input like A1
-          if (!isValidSeatNumber(part)) {
-            isInvalid = true;
-            return;
-          }
-          expandedSeats.push(part);
+        if (!isValidSeatNumber(start) || !isValidSeatNumber(end)) {
+          isInvalid = true;
+          return;
         }
-      });
-    
-      // Remove duplicates
-      seatNumbers = Array.from(new Set(expandedSeats));
-    
-      if (isInvalid) {
-        showMessage(
-          "Each seat must be one letter (A-Z) followed by a number (1-50). Example: 'A1' or 'A1, B1, C1' or 'A1-A5'.", "error");
-        checkSeatButton.disabled = true;
-        return;
+
+        const startMatch = start.match(/^([A-Z])(\d{1,2})$/);
+        const endMatch = end.match(/^([A-Z])(\d{1,2})$/);
+
+        if (!startMatch || !endMatch) {
+          isInvalid = true;
+          return;
+        }
+
+        const [, startRow, startNumber] = startMatch;
+        const [, endRow, endNumber] = endMatch;
+
+        // Rows must match for a valid range
+        if (startRow !== endRow) {
+          isInvalid = true;
+          return;
+        }
+
+        const startNum = parseInt(startNumber, 10);
+        const endNum = parseInt(endNumber, 10);
+
+        if (startNum > endNum || startNum <= 0 || endNum > 50) {
+          isInvalid = true;
+          return;
+        }
+
+        // Expand the range
+        for (let i = startNum; i <= endNum; i++) {
+          expandedSeats.push(`${startRow}${i}`);
+        }
       } else {
-        clearMessage();
-        checkSeatButton.disabled = false;
+        // Handle single seat input like A1
+        if (!isValidSeatNumber(part)) {
+          isInvalid = true;
+          return;
+        }
+        expandedSeats.push(part);
       }
+    });
+
+    // Remove duplicates
+    seatNumbers = Array.from(new Set(expandedSeats));
+
+    if (isInvalid) {
+      showMessage(
+        "Each seat must be one letter (A-Z) followed by a number (1-50). Example: 'A1' or 'A1, B1, C1' or 'A1-A5'.",
+        "error",
+      );
+      checkSeatButton.disabled = true;
+      return;
+    } else {
+      clearMessage();
+      checkSeatButton.disabled = false;
+    }
   });
 
   specificSeatsForm.addEventListener("submit", function (e) {
@@ -159,7 +160,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       let currentUrl = tabs[0].url;
-      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname
+      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname;
 
       if (
         !currentUrl.match(
@@ -174,33 +175,59 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       seatingUrl = currentUrl;
       showLoading();
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        {
-          action: "checkSeat",
-          seatNumbers: formattedSeatNumbers,
-        }, handleResponse)
+      chrome.tabs.sendMessage(tabs[0].id, { ping: true }, function (res) {
+        if (chrome.runtime.lastError) {
+          // Content script not loaded, inject it manually
+          chrome.scripting.executeScript(
+            {
+              target: { tabId: tabs[0].id },
+              files: ["content.js"],
+            },
+            () => {
+              // Retry sending the real message after injection
+              chrome.tabs.sendMessage(
+                tabs[0].id,
+                {
+                  action: "checkSeat",
+                  seatNumbers: formattedSeatNumbers,
+                },
+                handleResponse,
+              );
+            },
+          );
+        } else {
+          // Content script already loaded, send message
+          chrome.tabs.sendMessage(
+            tabs[0].id,
+            {
+              action: "checkSeat",
+              seatNumbers: formattedSeatNumbers,
+            },
+            handleResponse,
+          );
+        }
+      });
+    });
   });
+
   function handleResponse(response) {
     hideLoading();
     console.log("Received response:", response);
 
     if (chrome.runtime.lastError) {
       console.log("Runtime error:", chrome.runtime.lastError);
-      showMessage("Error: If you are currently on the seating map, try refreshing the page.", "error");
+      showMessage(
+        "Error: If you are currently on the seating map, try refreshing the page.",
+        "error",
+      );
       return;
     }
 
     if (response.error) {
       showMessage(response.error, "error");
     } else {
-      const {
-        occupiedSeats,
-        availableSeats,
-        theaterName,
-        movieName,
-        date
-      } = response;
+      const { occupiedSeats, availableSeats, theaterName, movieName, date } =
+        response;
       theater = theaterName;
       showtime = date;
       movie = movieName;
@@ -217,7 +244,10 @@ document.addEventListener("DOMContentLoaded", function () {
       } else {
         // Multiple seats check
         if (availableSeats.length > 0) {
-          showMessage(`The following seats are already available: ${availableSeats.join(", ")}`, 'success');
+          showMessage(
+            `The following seats are already available: ${availableSeats.join(", ")}`,
+            "success",
+          );
           emailSection.style.display = "none";
         } else {
           showMessage("All requested seats are currently occupied.");
@@ -226,15 +256,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
   }
-  
+
   checkAllSeatsButton.addEventListener("click", function () {
     isCheckingAllSeats = true;
     showLoading();
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       let currentUrl = tabs[0].url;
-      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname
-
+      currentUrl = new URL(currentUrl).origin + new URL(currentUrl).pathname;
 
       if (
         !currentUrl.match(
@@ -267,11 +296,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
           }
 
-          const { occupiedSeats,
-            theaterName,
-            movieName,
-            date } =
-            response;
+          const { occupiedSeats, theaterName, movieName, date } = response;
 
           if (occupiedSeats.length === 0) {
             showMessage("All seats are currently available!", "success");
@@ -307,21 +332,24 @@ document.addEventListener("DOMContentLoaded", function () {
     submitEmailButton.style;
 
     try {
-      const response = await fetch("https://amc-seats-backend-production.up.railway.app/notifications", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://amc-seats-backend-production.up.railway.app/notifications",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            seatNumbers,
+            url: seatingUrl,
+            theater,
+            movie,
+            showtime,
+            areSpecficallyRequested: !isAnySeatsMode,
+          }),
         },
-        body: JSON.stringify({
-          email,
-          seatNumbers,
-          url: seatingUrl,
-          theater,
-          movie,
-          showtime,
-          areSpecficallyRequested: !isAnySeatsMode,
-        }),
-      });
+      );
 
       hideLoading();
       const data = await response.json();
@@ -366,4 +394,4 @@ document.addEventListener("DOMContentLoaded", function () {
       console.error("Error:", error);
     }
   });
-})});
+});
