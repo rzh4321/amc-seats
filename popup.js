@@ -208,54 +208,60 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
     });
-  });
-
-  function handleResponse(response) {
-    hideLoading();
-    console.log("Received response:", response);
-
-    if (chrome.runtime.lastError) {
-      console.log("Runtime error:", chrome.runtime.lastError);
-      showMessage(
-        "Error: If you are currently on the seating map, try refreshing the page.",
-        "error",
-      );
-      return;
-    }
-
-    if (response.error) {
-      showMessage(response.error, "error");
-    } else {
-      const { occupiedSeats, availableSeats, theaterName, movieName, date } =
-        response;
-      theater = theaterName;
-      showtime = date;
-      movie = movieName;
-      seatNumbers = occupiedSeats;
-      if (formattedSeatNumbers.length === 1) {
-        // Single seat check
-        if (occupiedSeats.length === 1) {
-          showMessage("This seat is currently occupied.", "info");
-          emailSection.style.display = "block";
-        } else {
-          showMessage("This seat is currently available!", "success");
-          emailSection.style.display = "none";
-        }
+  
+    function handleResponse(response) {
+      hideLoading();
+      console.log("Received response:", response);
+    
+      if (chrome.runtime.lastError) {
+        console.log("Runtime error:", chrome.runtime.lastError);
+        showMessage(
+          "Error: If you are currently on the seating map, try refreshing the page.",
+          "error",
+        );
+        return;
+      }
+    
+      if (response.error) {
+        showMessage(response.error, "error");
       } else {
-        // Multiple seats check
-        if (availableSeats.length > 0) {
-          showMessage(
-            `The following seats are already available: ${availableSeats.join(", ")}`,
-            "success",
-          );
-          emailSection.style.display = "none";
+        const { occupiedSeats, availableSeats, theaterName, movieName, date } =
+          response;
+        theater = theaterName;
+        showtime = date;
+        movie = movieName;
+        seatNumbers = occupiedSeats;
+        if (formattedSeatNumbers.length === 1) {
+          // Single seat check
+          if (occupiedSeats.length === 1) {
+            showMessage("This seat is currently occupied.", "info");
+            emailSection.style.display = "block";
+          } else {
+            showMessage("This seat is currently available!", "success");
+            emailSection.style.display = "none";
+          }
         } else {
-          showMessage("All requested seats are currently occupied.");
-          emailSection.style.display = "block";
+          // Multiple seats check
+          if (availableSeats.length > 0) {
+            showMessage(
+              `The following seats are already available: ${availableSeats.join(", ")}`,
+              "success",
+            );
+            emailSection.style.display = "none";
+          } else {
+            showMessage("All requested seats are currently occupied.");
+            emailSection.style.display = "block";
+          }
         }
       }
     }
+  
   }
+
+
+
+);
+
 
   checkAllSeatsButton.addEventListener("click", function () {
     isCheckingAllSeats = true;
