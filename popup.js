@@ -339,7 +339,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     try {
       const response = await fetch(
-        "https://amc-seats-backend-production.up.railway.app/notifications",
+        "https://amc-seats-backend.onrender.com/notifications",
+        
         {
           method: "POST",
           headers: {

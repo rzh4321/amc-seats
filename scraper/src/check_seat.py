@@ -82,8 +82,8 @@ def send_email(
     smtp_port = 587
     sender_email = "amcseatalert@gmail.com"
 
-    seat_notification_url = f"https://amc-seats-backend-production.up.railway.app/unsubscribe/{notification_id}"
-    all_notifications_url = f"https://amc-seats-backend-production.up.railway.app/unsubscribe/{showtime_id}/{to_email}"
+    seat_notification_url = f"https://amc-seats-backend.onrender.com/unsubscribe/{notification_id}"
+    all_notifications_url = f"https://amc-seats-backend.onrender.com/unsubscribe/{showtime_id}/{to_email}"
 
     if is_specifically_requested:
         intro = f"""{'Reminder: ' if not first_time_notif else ''}Seat {seat_number} is now available"""
@@ -325,8 +325,8 @@ def check_seats():
     # process notifications in parallel using a thread pool
     # and immediately send them to process_single_notification
     try:
-        max_workers_info = 6  # For get_movie_info
-        max_workers_process = 12  # For process_single_notification
+        max_workers_info = 2  # For get_movie_info
+        max_workers_process = 2  # For process_single_notification
 
         with ThreadPoolExecutor(
             max_workers=max_workers_info
