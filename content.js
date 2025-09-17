@@ -43,7 +43,8 @@ async function checkSeats(seatNumbers) {
   console.log("Starting seat check for:", seatNumbers);
   const { date, theaterName, movieName } = getMovieInfo();
 
-  let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+  // CSS FOR A SEAT
+  let seatButtons = Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(
     (button) => {
       const buttonText = button.textContent.trim();
       return seatNumbers.includes(buttonText);
@@ -52,7 +53,7 @@ async function checkSeats(seatNumbers) {
 
   if (seatButtons.length < seatNumbers.length) {
     const zoomInButton = document.querySelector(
-      ".rounded-full.bg-gray-400.p-4",
+      ".rounded-full.bg-gray-400.p-4",          // CSS FOR ZOOM BUTTON
     );
 
     if (zoomInButton) {
@@ -60,7 +61,7 @@ async function checkSeats(seatNumbers) {
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+      seatButtons = Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(
         (button) => seatNumbers.includes(button.textContent.trim()),
       );
       console.log("Seat buttons after zoom:", seatButtons.length);
@@ -76,7 +77,7 @@ async function checkSeats(seatNumbers) {
 
   seatButtons.forEach((button) => {
     const seatNumber = button.textContent.trim();
-    if (button.classList.contains("cursor-not-allowed")) {
+    if (button.firstChild.classList.contains('cursor-not-allowed')) {
       occupiedSeats.push(seatNumber);
     } else {
       availableSeats.push(seatNumber);
@@ -95,7 +96,7 @@ async function checkSeats(seatNumbers) {
 async function getAllOccupiedSeats() {
   const { date, theaterName, movieName } = getMovieInfo();
   // try to find seat buttons
-  let seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+  let seatButtons = Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(
     (button) => button.textContent.trim().match(/^[A-Z][0-9]+$/),
   );
 
@@ -108,14 +109,14 @@ async function getAllOccupiedSeats() {
       zoomInButton.click();
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      seatButtons = Array.from(document.getElementsByTagName("button")).filter(
+      seatButtons = Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(
         (button) => button.textContent.trim().match(/^[A-Z][0-9]+$/),
       );
     }
   }
 
   const occupiedSeats = seatButtons
-    .filter((button) => button.classList.contains("cursor-not-allowed"))
+    .filter((button) => button.firstChild.classList.contains('cursor-not-allowed'))
     .map((button) => button.textContent.trim());
 
   return {
