@@ -274,7 +274,7 @@ def process_single_notification(notification_info):
                 return
 
         seat_button = seat_buttons[0]
-        is_occupied = "cursor-not-allowed" in seat_button.get_attribute("class").split()
+        is_occupied = "cursor-not-allowed" in seat_button.find_element(By.XPATH, './*').get_attribute("class").split()
         logger.info(f"Seat {seat_number} is available: {not is_occupied}")
 
         if not is_occupied and should_be_notified:
@@ -376,7 +376,7 @@ def attempt_to_find_seat(driver, url, seat_number):
 
     # Wait for seats to load
     WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.TAG_NAME, "button"))
+        EC.presence_of_element_located((By.CSS_SELECTOR, 'div[role="gridcell"]'))
     )
 
     # Handle cookie dialog
@@ -407,7 +407,7 @@ def attempt_to_find_seat(driver, url, seat_number):
     # try to find seats without zooming
     buttons = driver.execute_script(
         f"""
-            return Array.from(document.querySelectorAll('button'))
+            return Array.from(document.querySelectorAll('div[role="gridcell"]'))
         """
     )
 
@@ -431,7 +431,7 @@ def attempt_to_find_seat(driver, url, seat_number):
 
             buttons = driver.execute_script(
                 f"""
-                    return Array.from(document.querySelectorAll('button'))
+                    return Array.from(document.querySelectorAll('div[role="gridcell"]'))
                 """
             )
 
