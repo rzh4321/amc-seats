@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 PAGE_LOAD_TIMEOUT = 30
 ELEMENT_WAIT_TIMEOUT = 15
 
-# Whether to run the browser headless:
-# - Non-headless is less likely to be fingerprinted as a bot, but requires a display and is slower.
-# - If you must run headless in production, consider using legacy "--headless" and keep flags minimal.
+
 RUN_HEADLESS = True  # Set to True if your environment requires headless mode.
 
 
@@ -119,7 +117,7 @@ def send_email(
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
 
-    logger.info("SENDING EMAIL (attempt)...")
+    logger.info(f"SENDING EMAIL FOR {seat_number} FOR {time_string} {movie} ON {date_string} AT {theater}...")
 
     # SMTP credentials and sender identity:
     password = os.getenv("app_password")  # App password from environment (.env)
@@ -377,7 +375,6 @@ def _parse_available_seats(driver):
     """
     Parse all seat cells on the current seating page and determine which are occupied vs available.
 
-    Assumptions (based on your prior code):
     - Seat cells are represented by elements matching 'div[role="gridcell"]'.
     - The text content of the cell is the seat label (e.g., "K26").
     - Occupancy is indicated by a CSS class on a direct child element named "cursor-not-allowed".
@@ -400,22 +397,40 @@ def _parse_available_seats(driver):
     _close_cookie_dialog_if_present(driver)
 
     # Gather all seat cell elements.
-    # Note: We use Selenium's find_elements to get WebElement references we can query safely.
-    cells = driver.find_elements(By.CSS_SELECTOR, 'div[role="gridcell"]')
+    cells = driver.execute_script(
+        """
+        return Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(el => el.textContent.trim() !== '');
+        """
+    )
+    if len(cells) == 0:
+        # If no cells found, attempt to click a zoom-in button if present, then re-fetch cells.
+        try:
+            zoom_button = driver.find_element(
+                By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
+            )
+            zoom_button.click()
 
-    # Prepare sets to record labels.
+            cells = driver.execute_script(
+                """
+                return Array.from(document.querySelectorAll('div[role="gridcell"]'));
+                """
+            )
+        except Exception:
+            logger.error("Zoom button not found")
+
+    # Prepare sets to record labels/seat numbers.
     all_labels = set()
     occupied = set()
 
     # Iterate through each seat cell and extract label and occupancy.
     for c in cells:
-        label = (c.text or "").strip()
+        label = c.get_attribute("textContent").strip()
         if not label:
             # Some gridcells might be decorative or empty (no seat label); skip those.
             continue
         all_labels.add(label)
         try:
-            # Many seat cells have a single child whose class names indicate availability.
+            # Valid seat cells should have a single child whose class names indicate availability.
             child = c.find_element(By.XPATH, "./*")
             classes = (child.get_attribute("class") or "").split()
             if "cursor-not-allowed" in classes:
@@ -515,79 +530,129 @@ def _notify_for_showtime(driver, showtime_id: int, url: str, notif_group, meta_i
     return emails_sent, was_blocked
 
 
-
 def check_seats():
     """
-    Entry point for a single "sweep" using the grouped strategy:
+    Continuous grouped seat checker.
 
-    Steps:
-    1) Load all SeatNotification rows.
-    2) Group them by showtime_id (so we fetch each URL once).
-    3) Build per-showtime metadata (URL, movie/theater names, local date/time strings).
-    4) Create a single WebDriver instance to be reused for all showtimes.
-    5) Iterate showtimes in randomized order:
-       a) Fetch the page, parse seats once, fan-out notifications to all users for that showtime.
-    6) Quit the WebDriver at the end.
+    Behavior:
+    - Repeatedly:
+      1) Load all notifications from DB and group by showtime_id.
+      2) Build showtime metadata and URL mapping.
+      3) Iterate showtimes in randomized order:
+         - For the first showtime of the cycle: no wait.
+         - For subsequent showtimes: wait 20 seconds before fetching.
+         - Call _notify_for_showtime(driver, ...).
+         - If was_blocked is True, log and break the cycle early (to be handled by outer logic if desired).
+      4) After the last showtime is processed:
+         - Reload notifications on the next cycle (to catch new/removed entries).
+         - Wait 20 seconds before starting the next cycle's first showtime (so cycles don’t back-to-back hammer).
 
+    Notes:
+    - This function loops indefinitely until the process is stopped (Ctrl+C or supervisor).
+    - A single WebDriver instance is reused across the entire lifetime. If it crashes, we recreate it.
+    - Order of showtimes is randomized each cycle to avoid fixed timing patterns.
+    - You can add more backoff logic if needed (e.g., sleep longer after a block).
     """
-    logger.info("Starting grouped seat check...")
 
-    # Fetch all current notifications from the DB.
-    notifications = _load_all_notifications()
-    if not notifications:
-        logger.info("No notifications to process.")
-        return
+    # Fixed delay between showtime fetches (and between cycles)
+    INTER_FETCH_DELAY_SECONDS = 10
 
-    # Group notifications by showtime_id.
-    grouped = defaultdict(list)
-    for n in notifications:
-        grouped[n.showtime_id].append(n)
+    logger.info("Starting continuous grouped seat check...")
 
-    logger.info(f"Found {len(notifications)} notifications across {len(grouped)} showtimes.")
-
-    # Prepare metadata and URLs for each showtime. Skip any showtime that lacks URL or metadata.
-    showtime_meta = {}
-    url_by_showtime = {}
-    for showtime_id in grouped.keys():
-        meta = _enrich_showtime_info(showtime_id)
-        if not meta or not meta.get("url"):
-            logger.warning(f"Skipping showtime {showtime_id}: missing metadata or URL")
-            continue
-        showtime_meta[showtime_id] = meta
-        url_by_showtime[showtime_id] = meta["url"]
-
-
-    # Create a single WebDriver instance for the entire sweep.
     driver = None
+
     try:
-        driver = create_driver()
+        # Create a single driver for all cycles. If it fails at any point, we recreate it.
+        def ensure_driver():
+            nonlocal driver
+            if driver is None:
+                driver = create_driver()
+            return driver
 
-        # Process showtimes in a randomized order to avoid deterministic request bursts on the same URLs.
-        showtime_ids = list(url_by_showtime.keys())
-        random.shuffle(showtime_ids)
+        cycle_index = 0  # Count how many cycles we've completed (for logging)
 
-        for i, showtime_id in enumerate(showtime_ids):
-            meta = showtime_meta[showtime_id]
-            url = meta["url"]
-            notif_group = grouped[showtime_id]         
-            first_showtime = (i == 0)   
+        while True:
+            cycle_index += 1
+            logger.info(f"Cycle {cycle_index}: loading notifications from DB...")
 
-            # wait a minute between every page navigation except the first
-            if not first_showtime:
-                logger.info(f"Waiting 20 seconds before next page fetch...")
-                time.sleep(20)
+            # 1) Load all current notifications from the DB.
+            notifications = _load_all_notifications()
+            if not notifications:
+                logger.info("No notifications found. Waiting 20s before checking again...")
+                time.sleep(INTER_FETCH_DELAY_SECONDS)
+                # Continue to next cycle (reload DB again)
+                continue
 
-            # Fetch and notify for this showtime.
-            emails_sent, was_blocked = _notify_for_showtime(driver, showtime_id, url, notif_group, meta)
+            # 2) Group notifications by showtime_id.
+            grouped = defaultdict(list)
+            for n in notifications:
+                grouped[n.showtime_id].append(n)
 
-            if was_blocked:
-                logger.warning(f"Breaking due to block.")
-                break
+            logger.info(f"Cycle {cycle_index}: {len(notifications)} notifications across {len(grouped)} showtimes.")
 
-        logger.info(f"Completed grouped sweep.")
+            # 3) Prepare metadata and URLs for each showtime. Skip showtimes missing URL/metadata.
+            showtime_meta = {}
+            url_by_showtime = {}
+            for showtime_id in grouped.keys():
+                meta = _enrich_showtime_info(showtime_id)
+                if not meta or not meta.get("url"):
+                    logger.warning(f"Skipping showtime {showtime_id}: missing metadata or URL")
+                    continue
+                showtime_meta[showtime_id] = meta
+                url_by_showtime[showtime_id] = meta["url"]
 
+            # If all showtimes were skipped (no URLs), wait and retry.
+            if not url_by_showtime:
+                logger.info("No valid showtimes with URLs. Waiting 20s before reloading...")
+                time.sleep(INTER_FETCH_DELAY_SECONDS)
+                continue
+
+            # Randomize order each cycle to avoid a consistent pattern.
+            showtime_ids = list(url_by_showtime.keys())
+            random.shuffle(showtime_ids)
+
+            # Iterate over showtimes, waiting 20s before each fetch except the very first of the cycle.
+            for idx, showtime_id in enumerate(showtime_ids):
+                # Determine whether this is the first showtime in the cycle
+                first_in_cycle = (idx == 0)
+
+                # Wait before all except the first of the cycle
+                if not first_in_cycle:
+                    logger.info(f"Cycle {cycle_index}: waiting {INTER_FETCH_DELAY_SECONDS}s before next showtime...")
+                    time.sleep(INTER_FETCH_DELAY_SECONDS)
+
+                # Ensure we have a live driver
+                drv = ensure_driver()
+
+                meta = showtime_meta[showtime_id]
+                url = meta["url"]
+                notif_group = grouped[showtime_id]
+
+                # Fetch and notify for this showtime
+                emails_sent, was_blocked = _notify_for_showtime(drv, showtime_id, url, notif_group, meta)
+
+                # If the site blocked us, break early from the current cycle
+                if was_blocked:
+                    logger.warning("Block detected; breaking out of current cycle early.")
+                    # Optional: backoff longer here if you want:
+                    # time.sleep(3600)
+                    break
+                logger.info('=============================================================================')
+
+
+            # End of this cycle. Before starting the next cycle:
+            # - We wait 20 seconds so cycles don't start back-to-back without a pause.
+            logger.info(f"Cycle {cycle_index} complete. Waiting {INTER_FETCH_DELAY_SECONDS}s before next cycle...")
+            time.sleep(INTER_FETCH_DELAY_SECONDS)
+
+            # Loop repeats: we will reload notifications fresh at the top of the next cycle.
+
+    except KeyboardInterrupt:
+        logger.info("Received KeyboardInterrupt; shutting down gracefully.")
+    except Exception as e:
+        logger.exception(f"Unexpected error in check_seats loop: {e}")
     finally:
-        # Ensure the browser process is terminated even if we hit exceptions.
+        # Always attempt to quit the driver on exit
         try:
             if driver:
                 driver.quit()
