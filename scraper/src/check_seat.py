@@ -497,10 +497,13 @@ def _notify_for_showtime(driver, showtime_id: int, url: str, notif_group, meta_i
     for n in notif_group:
         # Decide if we're allowed to notify this user now based on last_notified timestamp.
         should_notify, first_time_notif = _should_notify(n.last_notified)
+        seat_label = n.seat_number
         if not should_notify:
+            logger.info(
+                f"Skipping notification for seat {seat_label} on {meta_info['time_string']} {meta_info['movie']} in {meta_info['theater']} at {meta_info['date_string']}; last notified at {n.last_notified}"
+            )
             continue  # Skip this user; we'll try again after 6-hour window.
 
-        seat_label = n.seat_number
         if seat_label in available:
             # Seat is currently available: send email.
             logger.info(f"Seat {seat_label} is available for {n.user_email} on showtime {showtime_id}")
