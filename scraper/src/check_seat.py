@@ -63,10 +63,6 @@ def create_driver():
     # increase /dev/shm size (e.g., docker run --shm-size=2g). If not possible, enable this:
     # chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # chrome_options.add_argument(
-    #     "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    #     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    # )
     chrome_options.add_argument(
         "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
@@ -399,7 +395,7 @@ def _parse_available_seats(driver):
     # Gather all seat cell elements.
     cells = driver.execute_script(
         """
-        return Array.from(document.querySelectorAll('div[role="gridcell"]')).filter(el => el.textContent.trim() !== '');
+        return Array.from(document.querySelectorAll('div[role="gridcell"] > label')).filter(el => el.textContent.trim() !== '');
         """
     )
     if len(cells) == 0:
@@ -409,10 +405,10 @@ def _parse_available_seats(driver):
                 By.CSS_SELECTOR, ".rounded-full.bg-gray-400.p-4"
             )
             zoom_button.click()
-
+            time.sleep(1)  # brief pause to let the UI update
             cells = driver.execute_script(
                 """
-                return Array.from(document.querySelectorAll('div[role="gridcell"]'));
+                return Array.from(document.querySelectorAll('div[role="gridcell"] > label')).filter(el => el.textContent.trim() !== '');
                 """
             )
         except Exception:
@@ -425,14 +421,9 @@ def _parse_available_seats(driver):
     # Iterate through each seat cell and extract label and occupancy.
     for c in cells:
         label = c.get_attribute("textContent").strip()
-        if not label:
-            # Some gridcells might be decorative or empty (no seat label); skip those.
-            continue
         all_labels.add(label)
         try:
-            # Valid seat cells should have a single child whose class names indicate availability.
-            child = c.find_element(By.XPATH, "./*")
-            classes = (child.get_attribute("class") or "").split()
+            classes = (c.get_attribute("class") or "").split()     
             if "cursor-not-allowed" in classes:
                 occupied.add(label)
         except Exception:
@@ -498,7 +489,6 @@ def _notify_for_showtime(driver, showtime_id: int, url: str, notif_group, meta_i
         # Decide if we're allowed to notify this user now based on last_notified timestamp.
         should_notify, first_time_notif = _should_notify(n.last_notified)
         seat_label = n.seat_number
-
         if seat_label in available:
             if not should_notify:
                 logger.info(
